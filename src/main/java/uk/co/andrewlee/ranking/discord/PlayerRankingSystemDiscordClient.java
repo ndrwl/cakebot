@@ -126,9 +126,19 @@ public class PlayerRankingSystemDiscordClient {
       return;
     }
 
-    ImmutableList<Long> users = channel.getConnectedUsers().stream().map(IUser::getLongID)
+    ImmutableList<Long> channelUsers = channel.getConnectedUsers().stream().map(IUser::getLongID)
         .collect(ImmutableList.toImmutableList());
-    findBalancedGame(users, message);
+
+    List<String> extraPlayers = arguments.subList(1, arguments.size());
+    try {
+      ImmutableList<Long> otherPlayerIds = DiscordHelper.parseUserList(extraPlayers);
+      findBalancedGame(ImmutableList.<Long>builder()
+          .addAll(channelUsers)
+          .addAll(otherPlayerIds)
+          .build(), message);
+    } catch (IllegalArgumentException e) {
+      message.reply(e.getMessage());
+    }
   }
 
   private void gameOutcomeCommand(boolean isAdmin, List<String> arguments, IMessage message) {
