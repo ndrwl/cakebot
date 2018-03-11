@@ -36,6 +36,7 @@ import uk.co.andrewlee.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @ThreadSafe
 public class PlayerRankingSystemDiscordClient {
+
   private static final Logger logger = LoggerFactory.getLogger(
       PlayerRankingSystemDiscordClient.class);
 
@@ -423,7 +424,6 @@ public class PlayerRankingSystemDiscordClient {
               playedWithStats.getGamesLostAgainst()));
           outputBuilder.append("\n");
         });
-
 
     message.reply(outputBuilder.toString());
   }

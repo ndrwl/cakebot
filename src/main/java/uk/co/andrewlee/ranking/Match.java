@@ -7,6 +7,7 @@ import javax.annotation.concurrent.Immutable;
 
 @Immutable
 public class Match {
+
   private final ImmutableList<Long> team1;
   private final ImmutableList<Long> team2;
   private final Optional<Double> matchQuality;

@@ -1,7 +1,9 @@
 package uk.co.andrewlee.ranking;
 
 public interface RankingOperation {
+
   class CreatePlayerRankingOperation implements RankingOperation {
+
     private final long playerId;
     private final double meanRating;
 
@@ -20,6 +22,7 @@ public interface RankingOperation {
   }
 
   class MatchOutcomeRankingOperation implements RankingOperation {
+
     private final MatchOutcome matchOutcome;
 
     MatchOutcomeRankingOperation(MatchOutcome matchOutcome) {

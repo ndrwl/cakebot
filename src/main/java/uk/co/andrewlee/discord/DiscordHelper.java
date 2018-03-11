@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DiscordHelper {
+
   private static final Pattern MENTION_PATTERN = Pattern.compile("<@[!]?([0-9]*)>");
 
   public static Optional<Long> extractUserId(String string) {
@@ -18,7 +19,7 @@ public class DiscordHelper {
   }
 
   public static ImmutableList<Long> parseUserList(List<String> listOfUserMentions)
-      throws IllegalArgumentException{
+      throws IllegalArgumentException {
     ImmutableList.Builder<Long> users = ImmutableList.builder();
     for (String userMention : listOfUserMentions) {
       Optional<Long> userIdOpt = extractUserId(userMention);

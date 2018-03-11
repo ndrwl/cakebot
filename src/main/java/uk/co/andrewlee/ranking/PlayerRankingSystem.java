@@ -39,6 +39,7 @@ import uk.co.andrewlee.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @NotThreadSafe
 public class PlayerRankingSystem {
+
   private static final Logger logger = LoggerFactory.getLogger(PlayerRankingSystem.class);
   private static final SimpleDateFormat BACKUP_FILE_NAME_FORMAT = new SimpleDateFormat(
       "yyyy-HH-dd_HH-mm-ss-SSS");
@@ -146,7 +147,7 @@ public class PlayerRankingSystem {
           ImmutableList.of(team1, team2));
 
       potentialMatches.add(new Match(ImmutableList.copyOf(playersOnTeam1),
-              ImmutableList.copyOf(playersOnTeam2), Optional.of(quality)));
+          ImmutableList.copyOf(playersOnTeam2), Optional.of(quality)));
 
       if (potentialMatches.size() > numberOfConfigurationsToConsider) {
         potentialMatches.poll();
@@ -254,6 +255,7 @@ public class PlayerRankingSystem {
 
   @Immutable
   private static class RankingOperationState {
+
     private final RankingOperation rankingOperation;
     private final Optional<Path> dataBeforeOperation;
 

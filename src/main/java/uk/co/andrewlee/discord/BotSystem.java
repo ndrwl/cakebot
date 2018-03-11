@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +19,7 @@ import sx.blah.discord.util.DiscordException;
 
 @ThreadSafe
 public class BotSystem {
+
   private static final Logger logger = LoggerFactory.getLogger(BotSystem.class);
 
   private final IDiscordClient discordClient;
@@ -58,10 +58,11 @@ public class BotSystem {
   }
 
   private class DiscordEventListener {
+
     @EventSubscriber
     public void onMessageReceivedEvent(MessageReceivedEvent messageReceivedEvent) {
       IMessage message = messageReceivedEvent.getMessage();
-      Optional<List<String>> commandOpt =extractBotCommand(message);
+      Optional<List<String>> commandOpt = extractBotCommand(message);
 
       if (!commandOpt.isPresent()) {
         return;
@@ -115,6 +116,7 @@ public class BotSystem {
 
   @FunctionalInterface
   public interface DiscordCommandHandler {
+
     void handle(Boolean isAdmin, List<String> arguments, IMessage message)
         throws Exception;
   }

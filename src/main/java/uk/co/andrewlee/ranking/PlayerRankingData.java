@@ -29,6 +29,7 @@ import uk.co.andrewlee.ranking.serializers.RatingSerializer;
 
 @NotThreadSafe
 public class PlayerRankingData {
+
   private static final Logger logger = LoggerFactory.getLogger(PlayerRankingData.class);
   private static final Gson GSON = new GsonBuilder()
       .registerTypeAdapter(Rating.class, new RatingSerializer())
@@ -181,6 +182,7 @@ public class PlayerRankingData {
   }
 
   public class PlayerStats extends WinLossStat {
+
     private final long playerId;
     private final HashMap<Long, PlayedWithStats> playedWithStats;
 
@@ -281,6 +283,7 @@ public class PlayerRankingData {
   }
 
   private static class SerializedData {
+
     public Map<Long, Rating> ratings;
     public List<MatchOutcome> matchOutcomes;
 
