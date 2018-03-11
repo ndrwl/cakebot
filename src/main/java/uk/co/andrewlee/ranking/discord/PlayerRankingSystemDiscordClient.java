@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -86,7 +87,7 @@ public class PlayerRankingSystemDiscordClient {
     registerHandler(botSystem, "undo", this::undoCommand);
     registerHandler(botSystem, "last", this::lastCommand);
     registerHandler(botSystem, "list", this::listPlayerCommand);
-    registerHandler(botSystem, "stat", this::statCommand);
+    registerHandler(botSystem, "stats", this::statCommand);
   }
 
   private void gameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
@@ -97,20 +98,6 @@ public class PlayerRankingSystemDiscordClient {
     } catch (IllegalArgumentException e) {
       message.reply(e.getMessage());
     }
-  }
-
-  private void findBalancedGame(ImmutableList<Long> playerIds, IMessage message) {
-    Match match = playerRankingSystem.findBalancedMatch(ImmutableSet.copyOf(playerIds));
-
-    StringBuilder outputBuilder = new StringBuilder();
-    outputBuilder.append("**Recommended Teams**");
-    outputBuilder.append("\n");
-    outputBuilder.append("\n");
-    printMatch(outputBuilder, match);
-
-    message.reply(outputBuilder.toString());
-
-    lastMatch = Optional.of(match);
   }
 
   private void channelGameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
@@ -139,6 +126,24 @@ public class PlayerRankingSystemDiscordClient {
     } catch (IllegalArgumentException e) {
       message.reply(e.getMessage());
     }
+  }
+
+  private void findBalancedGame(ImmutableList<Long> playerIds, IMessage message) {
+    Match match = playerRankingSystem.findBalancedMatch(ImmutableSet.copyOf(playerIds));
+
+    StringBuilder outputBuilder = new StringBuilder();
+    outputBuilder.append("**Recommended Teams**");
+    outputBuilder.append("\n");
+    outputBuilder.append("\n");
+    printMatch(outputBuilder, match);
+    outputBuilder.append("\n");
+    outputBuilder.append("\n");
+    outputBuilder.append(new Random().nextBoolean() ? "Team 1 picks first." :
+        "Team 2 picks first.");
+
+    message.reply(outputBuilder.toString());
+
+    lastMatch = Optional.of(match);
   }
 
   private void gameOutcomeCommand(boolean isAdmin, List<String> arguments, IMessage message) {
@@ -362,7 +367,12 @@ public class PlayerRankingSystemDiscordClient {
   }
 
   private void statCommand(boolean isAdmin, List<String> arguments, IMessage message) {
-    if (arguments.size() != 2) {
+    if (arguments.size() > 2) {
+      return;
+    }
+
+    if (arguments.size() == 1) {
+      postStats(message.getAuthor().getLongID(), message);
       return;
     }
 
@@ -373,6 +383,10 @@ public class PlayerRankingSystemDiscordClient {
     }
 
     long userId = userIdOpt.get();
+    postStats(userId, message);
+  }
+
+  private void postStats(long userId, IMessage message) {
     Optional<PlayerStats> playerStatsOpt = playerRankingSystem.getPlayerStats(userId);
     if (!playerStatsOpt.isPresent()) {
       message.reply(String.format("No stats for user %s.", mentionPlayer(userId)));
@@ -432,6 +446,30 @@ public class PlayerRankingSystemDiscordClient {
           outputBuilder.append(String.format("%s (%d)",
               mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesLostAgainst()));
+          outputBuilder.append("\n");
+        });
+
+    outputBuilder.append("\n");
+
+    playerStats.getPlayedWithStats().values().stream()
+        .filter(stats -> stats.totalGamesPlayed() > 0)
+        .max(Comparator.comparingDouble(PlayedWithStats::winRate))
+        .ifPresent(playedWithStats -> {
+          outputBuilder.append("Highest win rate with: ");
+          outputBuilder.append(String.format("%s (%,.1f%%)",
+              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              playedWithStats.winRate() * 100));
+          outputBuilder.append("\n");
+        });
+
+    playerStats.getPlayedWithStats().values().stream()
+        .filter(stats -> stats.totalGamesPlayed() > 0)
+        .min(Comparator.comparingDouble(PlayedWithStats::winRate))
+        .ifPresent(playedWithStats -> {
+          outputBuilder.append("Lowest win rate with: ");
+          outputBuilder.append(String.format("%s (%,.1f%%)",
+              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              playedWithStats.winRate() * 100));
           outputBuilder.append("\n");
         });
 
