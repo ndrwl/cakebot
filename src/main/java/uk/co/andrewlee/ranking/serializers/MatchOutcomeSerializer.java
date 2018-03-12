@@ -25,12 +25,6 @@ public class MatchOutcomeSerializer implements JsonSerializer<MatchOutcome>,
   }.getType();
 
   /**
-   * Old Style format constants
-   **/
-  private static final String WINNERS = "WINNERS";
-  private static final String LOSERS = "LOSERS";
-
-  /**
    * New Style format constants
    **/
   private static final String TEAM1 = "team1";
@@ -53,37 +47,20 @@ public class MatchOutcomeSerializer implements JsonSerializer<MatchOutcome>,
       JsonDeserializationContext jsonDeserializationContext) throws JsonParseException {
     JsonObject jsonObject = jsonElement.getAsJsonObject();
 
-    if (jsonObject.has(WINNERS)) {
-      /**
-       * Old Style format.
-       */
-      List<Long> winners = jsonDeserializationContext
-          .deserialize(jsonObject.get(WINNERS), PLAYER_LIST_TYPE);
-      List<Long> losers = jsonDeserializationContext
-          .deserialize(jsonObject.get(LOSERS), PLAYER_LIST_TYPE);
+    List<Long> team1 = jsonDeserializationContext
+        .deserialize(jsonObject.get(TEAM1), PLAYER_LIST_TYPE);
+    List<Long> team2 = jsonDeserializationContext
+        .deserialize(jsonObject.get(TEAM2), PLAYER_LIST_TYPE);
+    boolean isTeam1Won = jsonDeserializationContext
+        .deserialize(jsonObject.get(OUTCOME), BOOLEAN_TYPE);
 
-      return MatchOutcome
-          .createTeam1Won(new Match(ImmutableList.copyOf(winners), ImmutableList.copyOf(losers),
-              Optional.empty()));
+    Match match = new Match(ImmutableList.copyOf(team1), ImmutableList.copyOf(team2),
+        Optional.empty());
+
+    if (isTeam1Won) {
+      return MatchOutcome.createTeam1Won(match);
     } else {
-      /**
-       * New Style format.
-       */
-      List<Long> team1 = jsonDeserializationContext
-          .deserialize(jsonObject.get(TEAM1), PLAYER_LIST_TYPE);
-      List<Long> team2 = jsonDeserializationContext
-          .deserialize(jsonObject.get(TEAM2), PLAYER_LIST_TYPE);
-      boolean isTeam1Won = jsonDeserializationContext
-          .deserialize(jsonObject.get(OUTCOME), BOOLEAN_TYPE);
-
-      Match match = new Match(ImmutableList.copyOf(team1), ImmutableList.copyOf(team2),
-          Optional.empty());
-
-      if (isTeam1Won) {
-        return MatchOutcome.createTeam1Won(match);
-      } else {
-        return MatchOutcome.createTeam2Won(match);
-      }
+      return MatchOutcome.createTeam2Won(match);
     }
   }
 }
