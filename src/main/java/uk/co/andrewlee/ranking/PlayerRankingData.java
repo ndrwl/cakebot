@@ -28,7 +28,7 @@ import uk.co.andrewlee.ranking.serializers.MatchOutcomeSerializer;
 import uk.co.andrewlee.ranking.serializers.RatingSerializer;
 
 @NotThreadSafe
-public class PlayerRankingData {
+class PlayerRankingData {
 
   private static final Logger logger = LoggerFactory.getLogger(PlayerRankingData.class);
   private static final Gson GSON = new GsonBuilder()
@@ -43,7 +43,7 @@ public class PlayerRankingData {
   private final SkillCalculator skillCalculator;
   private final GameInfo gameInfo;
 
-  public PlayerRankingData(SkillCalculator skillCalculator, GameInfo gameInfo) {
+  PlayerRankingData(SkillCalculator skillCalculator, GameInfo gameInfo) {
     this.skillCalculator = skillCalculator;
     this.gameInfo = gameInfo;
     this.matchHistory = new ArrayList<>();
