@@ -28,7 +28,7 @@ import uk.co.andrewlee.ranking.serializers.MatchOutcomeSerializer;
 import uk.co.andrewlee.ranking.serializers.RatingSerializer;
 
 @NotThreadSafe
-class PlayerRankingData {
+public class PlayerRankingData {
 
   private static final Logger logger = LoggerFactory.getLogger(PlayerRankingData.class);
   private static final Gson GSON = new GsonBuilder()

@@ -15,6 +15,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -26,6 +27,7 @@ import sx.blah.discord.handle.obj.IVoiceState;
 import uk.co.andrewlee.discord.BotSystem;
 import uk.co.andrewlee.discord.BotSystem.DiscordCommandHandler;
 import uk.co.andrewlee.discord.DiscordHelper;
+import uk.co.andrewlee.drafter.RandomCivDrafter;
 import uk.co.andrewlee.ranking.Match;
 import uk.co.andrewlee.ranking.MatchOutcome;
 import uk.co.andrewlee.ranking.PlayerRankingData.PlayedWithStats;
@@ -43,6 +45,7 @@ public class PlayerRankingSystemDiscordClient {
 
   private final BotSystem botSystem;
   private final ExecutorService executor;
+  private final RandomCivDrafter randomCivDrafter;
 
   @GuardedBy("executor")
   private final PlayerRankingSystem playerRankingSystem;
@@ -63,16 +66,19 @@ public class PlayerRankingSystemDiscordClient {
     });
     initFuture.get();
 
+    RandomCivDrafter randomCivDrafter = RandomCivDrafter.create();
+
     return new PlayerRankingSystemDiscordClient(executor,
-        playerRankingSystem, botSystem);
+        playerRankingSystem, botSystem, randomCivDrafter);
   }
 
   private PlayerRankingSystemDiscordClient(
       ExecutorService executor, PlayerRankingSystem playerRankingSystem,
-      BotSystem botSystem) {
+      BotSystem botSystem, RandomCivDrafter randomCivDrafter) {
     this.executor = executor;
     this.playerRankingSystem = playerRankingSystem;
     this.botSystem = botSystem;
+    this.randomCivDrafter = randomCivDrafter;
     this.lastMatch = Optional.empty();
   }
 
@@ -88,6 +94,7 @@ public class PlayerRankingSystemDiscordClient {
     registerHandler(botSystem, "last", this::lastCommand);
     registerHandler(botSystem, "list", this::listPlayerCommand);
     registerHandler(botSystem, "stats", this::statCommand);
+    registerHandler(botSystem, "draft", this::randomDraft);
   }
 
   private void gameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
@@ -364,6 +371,21 @@ public class PlayerRankingSystemDiscordClient {
 
     asciiTable.addRule();
     message.reply("```" + asciiTable.render() + "```");
+  }
+
+  private void randomDraft(boolean isAdmin, List<String> arguments, IMessage message) {
+    if (arguments.size() != 1) {
+      message.reply(String.format("Please provide the number of players."));
+      return;
+    }
+
+    int numberOfPlayers = Integer.parseInt(arguments.get(0));
+
+    ImmutableList<String> randomCivs = randomCivDrafter.randomDraft(numberOfPlayers);
+    message.reply(IntStream.range(0, randomCivs.size())
+        .mapToObj(playerIndex -> String.format("Player %d: %s", playerIndex + 1,
+            randomCivs.get(playerIndex)))
+        .collect(Collectors.joining("\n")));
   }
 
   private void statCommand(boolean isAdmin, List<String> arguments, IMessage message) {
