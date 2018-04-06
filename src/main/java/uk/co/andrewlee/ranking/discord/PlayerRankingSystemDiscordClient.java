@@ -374,18 +374,14 @@ public class PlayerRankingSystemDiscordClient {
   }
 
   private void randomDraft(boolean isAdmin, List<String> arguments, IMessage message) {
-    if (arguments.size() != 1) {
-      message.reply(String.format("Please provide the number of players."));
-      return;
+    int numberOfPlayers = 12;
+    if (arguments.size() >= 2) {
+      numberOfPlayers = Integer.parseInt(arguments.get(1));
     }
 
-    int numberOfPlayers = Integer.parseInt(arguments.get(0));
-
     ImmutableList<String> randomCivs = randomCivDrafter.randomDraft(numberOfPlayers);
-    message.reply(IntStream.range(0, randomCivs.size())
-        .mapToObj(playerIndex -> String.format("Player %d: %s", playerIndex + 1,
-            randomCivs.get(playerIndex)))
-        .collect(Collectors.joining("\n")));
+    message.reply("**Here are your randomly chosen civs:**\n\n" + randomCivs.stream().collect(
+        Collectors.joining(", ")));
   }
 
   private void statCommand(boolean isAdmin, List<String> arguments, IMessage message) {
