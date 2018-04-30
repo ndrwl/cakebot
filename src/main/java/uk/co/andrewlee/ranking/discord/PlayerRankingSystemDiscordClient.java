@@ -28,6 +28,7 @@ import uk.co.andrewlee.discord.BotSystem;
 import uk.co.andrewlee.discord.BotSystem.DiscordCommandHandler;
 import uk.co.andrewlee.discord.DiscordHelper;
 import uk.co.andrewlee.drafter.RandomCivDrafter;
+import uk.co.andrewlee.drafter.RankedMapSelector;
 import uk.co.andrewlee.ranking.Match;
 import uk.co.andrewlee.ranking.MatchOutcome;
 import uk.co.andrewlee.ranking.PlayerRankingData.PlayedWithStats;
@@ -46,6 +47,7 @@ public class PlayerRankingSystemDiscordClient {
   private final BotSystem botSystem;
   private final ExecutorService executor;
   private final RandomCivDrafter randomCivDrafter;
+  private final RankedMapSelector rankedMapSelector;
 
   @GuardedBy("executor")
   private final PlayerRankingSystem playerRankingSystem;
@@ -67,18 +69,20 @@ public class PlayerRankingSystemDiscordClient {
     initFuture.get();
 
     RandomCivDrafter randomCivDrafter = RandomCivDrafter.create();
+    RankedMapSelector rankedMapSelector = RankedMapSelector.create();
 
     return new PlayerRankingSystemDiscordClient(executor,
-        playerRankingSystem, botSystem, randomCivDrafter);
+        playerRankingSystem, botSystem, randomCivDrafter, rankedMapSelector);
   }
 
   private PlayerRankingSystemDiscordClient(
       ExecutorService executor, PlayerRankingSystem playerRankingSystem,
-      BotSystem botSystem, RandomCivDrafter randomCivDrafter) {
+      BotSystem botSystem, RandomCivDrafter randomCivDrafter, RankedMapSelector rankedMapSelector) {
     this.executor = executor;
     this.playerRankingSystem = playerRankingSystem;
     this.botSystem = botSystem;
     this.randomCivDrafter = randomCivDrafter;
+    this.rankedMapSelector = rankedMapSelector;
     this.lastMatch = Optional.empty();
   }
 
@@ -95,6 +99,7 @@ public class PlayerRankingSystemDiscordClient {
     registerHandler(botSystem, "list", this::listPlayerCommand);
     registerHandler(botSystem, "stats", this::statCommand);
     registerHandler(botSystem, "draft", this::randomDraft);
+    registerHandler(botSystem, "maps", this::listMaps);
   }
 
   private void gameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
@@ -147,6 +152,9 @@ public class PlayerRankingSystemDiscordClient {
     outputBuilder.append("\n");
     outputBuilder.append(new Random().nextBoolean() ? "Team 1 picks first." :
         "Team 2 picks first.");
+    outputBuilder.append("\n");
+    outputBuilder.append("Map: ");
+    outputBuilder.append(rankedMapSelector.randomMap());
 
     message.reply(outputBuilder.toString());
 
@@ -382,6 +390,14 @@ public class PlayerRankingSystemDiscordClient {
     ImmutableList<String> randomCivs = randomCivDrafter.randomDraft(numberOfPlayers);
     message.reply("**Here are your randomly chosen civs:**\n\n" + randomCivs.stream().collect(
         Collectors.joining(", ")));
+  }
+
+  private void listMaps(boolean isAdmin, List<String> arguments, IMessage message) {
+    ImmutableList<String> maps = rankedMapSelector.allRankedMaps();
+
+    message.reply("The maps in the current ranked pool are:\n" + maps.stream()
+            .collect(Collectors.joining(", ")));
+
   }
 
   private void statCommand(boolean isAdmin, List<String> arguments, IMessage message) {
