@@ -285,13 +285,24 @@ public class PlayerRankingSystemDiscordClient {
       return;
     }
 
-    if (arguments.size() != 3) {
-      message.reply(String.format("Provide two arguments. Usage: %s register [user] [rating]",
-          mentionBot()));
+    if (arguments.size() != 3 && arguments.size() != 2) {
+      if (hideRating) {
+        message.reply(String.format("Provide one arguments. Usage: %s register [user]",
+            mentionBot()));
+      } else {
+        message.reply(String.format("Provide two arguments. Usage: %s register [user] [rating]",
+            mentionBot()));
+      }
       return;
     }
+
     String playerMention = arguments.get(1);
-    int initialRating = Integer.parseInt(arguments.get(2));
+    Optional<Integer> initialRating = Optional.empty();
+
+    if (arguments.size() == 3) {
+      initialRating = Optional.of(Integer.parseInt(arguments.get(2)));
+    }
+
 
     Optional<Long> playerIdOpt = DiscordHelper.extractUserId(playerMention);
     if (!playerIdOpt.isPresent()) {
@@ -308,9 +319,18 @@ public class PlayerRankingSystemDiscordClient {
     }
 
     try {
-      playerRankingSystem.createPlayerWithRanking(playerId, initialRating);
-      message.reply(String.format("Registered user %s, with mean rating %s.",
-          mentionPlayer(playerId), initialRating));
+      if (initialRating.isPresent()) {
+        playerRankingSystem.createPlayerWithRating(playerId, initialRating.get());
+      } else {
+        playerRankingSystem.createPlayerWithDefaultRating(playerId);
+      }
+
+      if (hideRating) {
+        message.reply(String.format("Registered user %s.", mentionPlayer(playerId)));
+      } else {
+        message.reply(String.format("Registered user %s, with mean rating %s.",
+            mentionPlayer(playerId), initialRating));
+      }
     } catch (Exception e) {
       logger.error("Error registering user.", e);
       message.reply("Error registering user. Please check server logs.");

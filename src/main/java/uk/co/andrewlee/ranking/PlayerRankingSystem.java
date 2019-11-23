@@ -170,10 +170,14 @@ public class PlayerRankingSystem {
     return playerRankingData.getAllPlayerStats();
   }
 
-  public void createPlayerWithRanking(long playerId, double meanRating)
-      throws Exception {
+  public void createPlayerWithDefaultRating(long playerId) throws Exception {
+    performRankingOperation(new CreatePlayerRankingOperation(playerId, gameInfo.getInitialMean()),
+        () -> playerRankingData.createPlayerWithRating(playerId, gameInfo.getInitialMean()));
+  }
+
+  public void createPlayerWithRating(long playerId, double meanRating) throws Exception {
     performRankingOperation(new CreatePlayerRankingOperation(playerId, meanRating),
-        () -> playerRankingData.createPlayerWithRanking(playerId, meanRating));
+        () -> playerRankingData.createPlayerWithRating(playerId, meanRating));
   }
 
   public void recordMatchOutcome(MatchOutcome matchOutcome) throws Exception {

@@ -62,7 +62,7 @@ public class PlayerRankingData {
     return playerStats;
   }
 
-  public void createPlayerWithRanking(long playerId, double meanRating) {
+  public void createPlayerWithRating(long playerId, double meanRating) {
     Preconditions.checkState(!hasPlayer(playerId));
 
     getOrCreatePlayerStats(playerId).playerRating = new Rating(meanRating,
