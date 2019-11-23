@@ -325,11 +325,11 @@ public class PlayerRankingSystemDiscordClient {
         playerRankingSystem.createPlayerWithDefaultRating(playerId);
       }
 
-      if (hideRating) {
+      if (hideRating || !initialRating.isPresent()) {
         message.reply(String.format("Registered user %s.", mentionPlayer(playerId)));
       } else {
         message.reply(String.format("Registered user %s, with mean rating %s.",
-            mentionPlayer(playerId), initialRating));
+            mentionPlayer(playerId), initialRating.get()));
       }
     } catch (Exception e) {
       logger.error("Error registering user.", e);
@@ -385,6 +385,23 @@ public class PlayerRankingSystemDiscordClient {
 
     if (hideRating) {
       asciiTable.addRule();
+      asciiTable.addRow("Player Name", "Games Played", "Win Rate");
+      asciiTable.addRule();
+
+      playerRankingSystem.getAllPlayerStats().entrySet().stream()
+          .sorted(
+              Comparator.comparingDouble(entry -> -entry.getValue().winRate()))
+          .forEach(entry -> {
+            long playerId = entry.getKey();
+            PlayerStats playerStats = entry.getValue();
+            asciiTable.addRow(playerName(playerId, message),
+                String.format("%d", playerStats.totalGamesPlayed()),
+                String.format("%,.1f%%", playerStats.winRate() * 100));
+          });
+
+      asciiTable.addRule();
+    } else {
+      asciiTable.addRule();
       asciiTable.addRow("Player Name", "Rating", "Std. Dev", "Games Played", "Win Rate");
       asciiTable.addRule();
 
@@ -403,23 +420,6 @@ public class PlayerRankingSystemDiscordClient {
 
       asciiTable.addRule();
       message.reply("```" + asciiTable.render() + "```");
-    } else {
-      asciiTable.addRule();
-      asciiTable.addRow("Player Name", "Games Played", "Win Rate");
-      asciiTable.addRule();
-
-      playerRankingSystem.getAllPlayerStats().entrySet().stream()
-          .sorted(
-              Comparator.comparingDouble(entry -> -entry.getValue().winRate()))
-          .forEach(entry -> {
-            long playerId = entry.getKey();
-            PlayerStats playerStats = entry.getValue();
-            asciiTable.addRow(playerName(playerId, message),
-                String.format("%d", playerStats.totalGamesPlayed()),
-                String.format("%,.1f%%", playerStats.winRate() * 100));
-          });
-
-      asciiTable.addRule();
     }
     message.reply("```" + asciiTable.render() + "```");
   }
