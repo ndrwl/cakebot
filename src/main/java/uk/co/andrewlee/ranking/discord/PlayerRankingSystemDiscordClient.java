@@ -15,7 +15,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -48,6 +47,9 @@ public class PlayerRankingSystemDiscordClient {
   private final ExecutorService executor;
   private final RandomCivDrafter randomCivDrafter;
   private final RankedMapSelector rankedMapSelector;
+
+  // TODO: Add flags?
+  private final static boolean hideRating = true;
 
   @GuardedBy("executor")
   private final PlayerRankingSystem playerRankingSystem;
@@ -361,23 +363,44 @@ public class PlayerRankingSystemDiscordClient {
   private void listPlayerCommand(boolean isAdmin, List<String> arguments, IMessage message) {
     AsciiTable asciiTable = new AsciiTable();
 
-    asciiTable.addRule();
-    asciiTable.addRow("Player Name", "Rating", "Std. Dev", "Games Played", "Win Rate");
-    asciiTable.addRule();
+    if (hideRating) {
+      asciiTable.addRule();
+      asciiTable.addRow("Player Name", "Rating", "Std. Dev", "Games Played", "Win Rate");
+      asciiTable.addRule();
 
-    playerRankingSystem.getAllPlayerStats().entrySet().stream()
-        .sorted(Comparator.comparingDouble(entry -> -entry.getValue().getPlayerRating().getMean()))
-        .forEach(entry -> {
-          long playerId = entry.getKey();
-          PlayerStats playerStats = entry.getValue();
-          asciiTable.addRow(playerName(playerId, message),
-              String.format("%,.1f", playerStats.getPlayerRating().getMean()),
-              String.format("%,.1f", playerStats.getPlayerRating().getStandardDeviation()),
-              String.format("%d", playerStats.totalGamesPlayed()),
-              String.format("%,.1f%%", playerStats.winRate() * 100));
-        });
+      playerRankingSystem.getAllPlayerStats().entrySet().stream()
+          .sorted(
+              Comparator.comparingDouble(entry -> -entry.getValue().getPlayerRating().getMean()))
+          .forEach(entry -> {
+            long playerId = entry.getKey();
+            PlayerStats playerStats = entry.getValue();
+            asciiTable.addRow(playerName(playerId, message),
+                String.format("%,.1f", playerStats.getPlayerRating().getMean()),
+                String.format("%,.1f", playerStats.getPlayerRating().getStandardDeviation()),
+                String.format("%d", playerStats.totalGamesPlayed()),
+                String.format("%,.1f%%", playerStats.winRate() * 100));
+          });
 
-    asciiTable.addRule();
+      asciiTable.addRule();
+      message.reply("```" + asciiTable.render() + "```");
+    } else {
+      asciiTable.addRule();
+      asciiTable.addRow("Player Name", "Games Played", "Win Rate");
+      asciiTable.addRule();
+
+      playerRankingSystem.getAllPlayerStats().entrySet().stream()
+          .sorted(
+              Comparator.comparingDouble(entry -> -entry.getValue().winRate()))
+          .forEach(entry -> {
+            long playerId = entry.getKey();
+            PlayerStats playerStats = entry.getValue();
+            asciiTable.addRow(playerName(playerId, message),
+                String.format("%d", playerStats.totalGamesPlayed()),
+                String.format("%,.1f%%", playerStats.winRate() * 100));
+          });
+
+      asciiTable.addRule();
+    }
     message.reply("```" + asciiTable.render() + "```");
   }
 
@@ -523,8 +546,12 @@ public class PlayerRankingSystemDiscordClient {
       stringBuilder.append("\n");
       stringBuilder.append("\n");
       stringBuilder.append(createPlayerRankingOperation.getPlayerId());
-      stringBuilder.append(" with rating ");
-      stringBuilder.append(createPlayerRankingOperation.getMeanRating());
+
+      if (hideRating) {
+        stringBuilder.append(" with rating ");
+        stringBuilder.append(createPlayerRankingOperation.getMeanRating());
+      }
+
       stringBuilder.append(".");
     } else if (rankingOperation instanceof MatchOutcomeRankingOperation) {
       MatchOutcomeRankingOperation matchOutcomeRankingOperation =
