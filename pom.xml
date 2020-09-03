@@ -9,6 +9,10 @@
   <version>2.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
   <build>
     <plugins>
       <plugin>
@@ -95,7 +99,7 @@
   <repositories>
     <repository> <!-- This repo fixes issues with transitive dependencies -->
       <id>jcenter</id>
-      <url>http://jcenter.bintray.com</url>
+      <url>https://jcenter.bintray.com</url>
     </repository>
     <repository>
       <id>jitpack.io</id>

@@ -1,10 +1,9 @@
 package uk.co.andrewlee.discord;
 
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -14,7 +13,6 @@ import sx.blah.discord.api.IDiscordClient;
 import sx.blah.discord.api.events.EventSubscriber;
 import sx.blah.discord.handle.impl.events.guild.channel.message.MessageReceivedEvent;
 import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.Permissions;
 import sx.blah.discord.util.DiscordException;
 
 @ThreadSafe
@@ -23,7 +21,7 @@ public class BotSystem {
   private static final Logger logger = LoggerFactory.getLogger(BotSystem.class);
 
   private final IDiscordClient discordClient;
-  private final ConcurrentHashMap<String, DiscordCommandHandler> handlers;
+  private final ConcurrentLinkedQueue<BotClient> botClients;
 
   private final AtomicBoolean hasStarted;
 
@@ -37,7 +35,7 @@ public class BotSystem {
   private BotSystem(IDiscordClient discordClient) {
     this.discordClient = discordClient;
     this.hasStarted = new AtomicBoolean(false);
-    this.handlers = new ConcurrentHashMap<>();
+    this.botClients = new ConcurrentLinkedQueue<>();
   }
 
   public void start() throws DiscordException {
@@ -52,9 +50,8 @@ public class BotSystem {
     return discordClient;
   }
 
-  // TODO: Some sort of clash checking...
-  public void registerHandler(String commandString, DiscordCommandHandler commandHandler) {
-    handlers.put(commandString, commandHandler);
+  public void registerBotClient(BotClient client) {
+    botClients.add(client);
   }
 
   private class DiscordEventListener {
@@ -73,22 +70,16 @@ public class BotSystem {
         return;
       }
 
-      Optional<DiscordCommandHandler> handlerOpt = Optional
-          .ofNullable(handlers.get(command.get(0)));
-      if (!handlerOpt.isPresent()) {
-        return;
-      }
-
-      DiscordCommandHandler handler = handlerOpt.get();
-
-      try {
-        handler.handle(isFromAdmin(message), command, message);
-      } catch (Exception e) {
-        logger.error(String.format("Error executing handler for message, %s",
-            message.getContent()), e);
-        message.reply("Error processing command. Please check server "
-            + "logs.");
-      }
+      botClients.forEach(client -> {
+        try {
+          client.handle(command, message);
+        } catch (Exception e) {
+          logger
+              .error(String.format("Error executing handler for message, %s", message.getContent()),
+                  e);
+          message.reply("Error processing command. Please check server logs.");
+        }
+      });
     }
 
     private Optional<List<String>> extractBotCommand(IMessage message) {
@@ -106,18 +97,5 @@ public class BotSystem {
       }
       return Optional.of(splitCommand);
     }
-
-    private boolean isFromAdmin(IMessage message) {
-      EnumSet<Permissions> authorPermissions = message.getAuthor()
-          .getPermissionsForGuild(message.getGuild());
-      return authorPermissions.contains(Permissions.ADMINISTRATOR);
-    }
-  }
-
-  @FunctionalInterface
-  public interface DiscordCommandHandler {
-
-    void handle(Boolean isAdmin, List<String> arguments, IMessage message)
-        throws Exception;
   }
 }

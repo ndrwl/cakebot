@@ -6,7 +6,6 @@ import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.SkillCalculator;
 import de.vandermeer.asciitable.AsciiTable;
 import java.nio.file.Path;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +22,8 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.handle.obj.IVoiceState;
+import uk.co.andrewlee.discord.BotClient;
 import uk.co.andrewlee.discord.BotSystem;
-import uk.co.andrewlee.discord.BotSystem.DiscordCommandHandler;
 import uk.co.andrewlee.discord.DiscordHelper;
 import uk.co.andrewlee.drafter.RandomCivDrafter;
 import uk.co.andrewlee.drafter.RankedMapSelector;
@@ -38,13 +37,11 @@ import uk.co.andrewlee.ranking.RankingOperation.CreatePlayerRankingOperation;
 import uk.co.andrewlee.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @ThreadSafe
-public class PlayerRankingSystemDiscordClient {
+public class PlayerRankingSystemDiscordClient extends BotClient {
 
   private static final Logger logger = LoggerFactory.getLogger(
       PlayerRankingSystemDiscordClient.class);
 
-  private final BotSystem botSystem;
-  private final ExecutorService executor;
   private final RandomCivDrafter randomCivDrafter;
   private final RankedMapSelector rankedMapSelector;
 
@@ -73,38 +70,39 @@ public class PlayerRankingSystemDiscordClient {
     RandomCivDrafter randomCivDrafter = RandomCivDrafter.create();
     RankedMapSelector rankedMapSelector = RankedMapSelector.create();
 
-    return new PlayerRankingSystemDiscordClient(executor,
-        playerRankingSystem, botSystem, randomCivDrafter, rankedMapSelector);
+    return new PlayerRankingSystemDiscordClient(botSystem, executor, playerRankingSystem,
+        randomCivDrafter, rankedMapSelector);
   }
 
-  private PlayerRankingSystemDiscordClient(
-      ExecutorService executor, PlayerRankingSystem playerRankingSystem,
-      BotSystem botSystem, RandomCivDrafter randomCivDrafter, RankedMapSelector rankedMapSelector) {
-    this.executor = executor;
+  private PlayerRankingSystemDiscordClient(BotSystem botSystem, ExecutorService executor,
+      PlayerRankingSystem playerRankingSystem, RandomCivDrafter randomCivDrafter,
+      RankedMapSelector rankedMapSelector) {
+    super(botSystem, executor);
     this.playerRankingSystem = playerRankingSystem;
-    this.botSystem = botSystem;
     this.randomCivDrafter = randomCivDrafter;
     this.rankedMapSelector = rankedMapSelector;
     this.lastMatch = Optional.empty();
   }
 
   public void init() {
-    registerHandler(botSystem, "game", this::gameCommand);
-    registerHandler(botSystem, "channelgame", this::channelGameCommand);
-    registerHandler(botSystem, "outcome", this::gameOutcomeCommand);
-    registerHandler(botSystem, "team1", this::teamOutcomeCommand);
-    registerHandler(botSystem, "team2", this::team2OutcomeCommand);
+    registerMessageHandler("game", this::gameCommand);
+    registerMessageHandler("channelgame", this::channelGameCommand);
+    registerMessageHandler("outcome", this::gameOutcomeCommand);
+    registerMessageHandler("team1", this::teamOutcomeCommand);
+    registerMessageHandler("team2", this::team2OutcomeCommand);
 
-    registerHandler(botSystem, "register", this::registerPlayerCommand);
-    registerHandler(botSystem, "undo", this::undoCommand);
-    registerHandler(botSystem, "last", this::lastCommand);
-    registerHandler(botSystem, "list", this::listPlayerCommand);
-    registerHandler(botSystem, "stats", this::statCommand);
-    registerHandler(botSystem, "draft", this::randomDraft);
-    registerHandler(botSystem, "maps", this::listMaps);
+    registerMessageHandler("register", this::registerPlayerCommand);
+    registerMessageHandler("undo", this::undoCommand);
+    registerMessageHandler("last", this::lastCommand);
+    registerMessageHandler("list", this::listPlayerCommand);
+    registerMessageHandler("stats", this::statCommand);
+    registerMessageHandler("draft", this::randomDraft);
+    registerMessageHandler("maps", this::listMaps);
+    // TODO: Register Channels
+    super.init();
   }
 
-  private void gameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void gameCommand(List<String> arguments, IMessage message) {
     List<String> players = arguments.subList(1, arguments.size());
     try {
       ImmutableList<Long> playerIds = DiscordHelper.parseUserList(players);
@@ -114,7 +112,7 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void channelGameCommand(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void channelGameCommand(List<String> arguments, IMessage message) {
     IVoiceState voiceState = message.getAuthor().getVoiceStateForGuild(message.getGuild());
     if (voiceState == null) {
       message.reply("Not in voice channel.");
@@ -163,8 +161,8 @@ public class PlayerRankingSystemDiscordClient {
     lastMatch = Optional.of(match);
   }
 
-  private void gameOutcomeCommand(boolean isAdmin, List<String> arguments, IMessage message) {
-    if (!isAdmin) {
+  private void gameOutcomeCommand(List<String> arguments, IMessage message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -195,13 +193,11 @@ public class PlayerRankingSystemDiscordClient {
           Optional.empty())), message);
     } catch (IllegalArgumentException e) {
       message.reply(e.getMessage());
-      return;
     }
   }
 
-  private void teamOutcomeCommand(boolean isAdmin, List<String> arguments,
-      IMessage message) {
-    if (!isAdmin) {
+  private void teamOutcomeCommand(List<String> arguments, IMessage message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -229,9 +225,8 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void team2OutcomeCommand(boolean isAdmin, List<String> arguments,
-      IMessage message) {
-    if (!isAdmin) {
+  private void team2OutcomeCommand(List<String> arguments, IMessage message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -279,9 +274,9 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void registerPlayerCommand(boolean isAdmin, List<String> arguments,
+  private void registerPlayerCommand(List<String> arguments,
       IMessage message) {
-    if (!isAdmin) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -303,7 +298,6 @@ public class PlayerRankingSystemDiscordClient {
       initialRating = Optional.of(Integer.parseInt(arguments.get(2)));
     }
 
-
     Optional<Long> playerIdOpt = DiscordHelper.extractUserId(playerMention);
     if (!playerIdOpt.isPresent()) {
       message.reply(String
@@ -314,7 +308,8 @@ public class PlayerRankingSystemDiscordClient {
 
     long playerId = playerIdOpt.get();
     if (playerRankingSystem.hasPlayer(playerId)) {
-      message.reply(String.format("User %s is already registered.", mentionPlayer(playerId)));
+      message.reply(String.format("User %s is already registered.",
+          DiscordHelper.mentionPlayer(botSystem, playerId)));
       return;
     }
 
@@ -326,10 +321,11 @@ public class PlayerRankingSystemDiscordClient {
       }
 
       if (hideRating || !initialRating.isPresent()) {
-        message.reply(String.format("Registered user %s.", mentionPlayer(playerId)));
+        message.reply(
+            String.format("Registered user %s.", DiscordHelper.mentionPlayer(botSystem, playerId)));
       } else {
         message.reply(String.format("Registered user %s, with mean rating %s.",
-            mentionPlayer(playerId), initialRating.get()));
+            DiscordHelper.mentionPlayer(botSystem, playerId), initialRating.get()));
       }
     } catch (Exception e) {
       logger.error("Error registering user.", e);
@@ -337,8 +333,8 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void undoCommand(boolean isAdmin, List<String> arguments, IMessage message) {
-    if (!isAdmin) {
+  private void undoCommand(List<String> arguments, IMessage message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -361,8 +357,8 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void lastCommand(boolean isAdmin, List<String> arguments, IMessage message) {
-    if (!isAdmin) {
+  private void lastCommand(List<String> arguments, IMessage message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
@@ -380,7 +376,7 @@ public class PlayerRankingSystemDiscordClient {
     }
   }
 
-  private void listPlayerCommand(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void listPlayerCommand(List<String> arguments, IMessage message) {
     AsciiTable asciiTable = new AsciiTable();
 
     if (hideRating) {
@@ -394,7 +390,7 @@ public class PlayerRankingSystemDiscordClient {
           .forEach(entry -> {
             long playerId = entry.getKey();
             PlayerStats playerStats = entry.getValue();
-            asciiTable.addRow(playerName(playerId, message),
+            asciiTable.addRow(DiscordHelper.playerName(botSystem, playerId, message),
                 String.format("%d", playerStats.totalGamesPlayed()),
                 String.format("%,.1f%%", playerStats.winRate() * 100));
           });
@@ -411,7 +407,7 @@ public class PlayerRankingSystemDiscordClient {
           .forEach(entry -> {
             long playerId = entry.getKey();
             PlayerStats playerStats = entry.getValue();
-            asciiTable.addRow(playerName(playerId, message),
+            asciiTable.addRow(DiscordHelper.playerName(botSystem, playerId, message),
                 String.format("%,.1f", playerStats.getPlayerRating().getMean()),
                 String.format("%,.1f", playerStats.getPlayerRating().getStandardDeviation()),
                 String.format("%d", playerStats.totalGamesPlayed()),
@@ -424,26 +420,24 @@ public class PlayerRankingSystemDiscordClient {
     message.reply("```" + asciiTable.render() + "```");
   }
 
-  private void randomDraft(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void randomDraft(List<String> arguments, IMessage message) {
     int numberOfPlayers = 12;
     if (arguments.size() >= 2) {
       numberOfPlayers = Integer.parseInt(arguments.get(1));
     }
 
     ImmutableList<String> randomCivs = randomCivDrafter.randomDraft(numberOfPlayers);
-    message.reply("**Here are your randomly chosen civs:**\n\n" + randomCivs.stream().collect(
-        Collectors.joining(", ")));
+    message.reply("**Here are your randomly chosen civs:**\n\n" + String.join(", ", randomCivs));
   }
 
-  private void listMaps(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void listMaps(List<String> arguments, IMessage message) {
     ImmutableList<String> maps = rankedMapSelector.allRankedMaps();
 
-    message.reply("The maps in the current ranked pool are:\n" + maps.stream()
-            .collect(Collectors.joining(", ")));
+    message.reply("The maps in the current ranked pool are:\n" + String.join(", ", maps));
 
   }
 
-  private void statCommand(boolean isAdmin, List<String> arguments, IMessage message) {
+  private void statCommand(List<String> arguments, IMessage message) {
     if (arguments.size() > 2) {
       return;
     }
@@ -466,14 +460,16 @@ public class PlayerRankingSystemDiscordClient {
   private void postStats(long userId, IMessage message) {
     Optional<PlayerStats> playerStatsOpt = playerRankingSystem.getPlayerStats(userId);
     if (!playerStatsOpt.isPresent()) {
-      message.reply(String.format("No stats for user %s.", mentionPlayer(userId)));
+      message.reply(
+          String.format("No stats for user %s.", DiscordHelper.mentionPlayer(botSystem, userId)));
       return;
     }
 
     PlayerStats playerStats = playerStatsOpt.get();
 
     StringBuilder outputBuilder = new StringBuilder();
-    outputBuilder.append(String.format("**Stats for %s**", mentionPlayer(userId)));
+    outputBuilder
+        .append(String.format("**Stats for %s**", DiscordHelper.mentionPlayer(botSystem, userId)));
     outputBuilder.append("\n");
     outputBuilder.append("\n");
 
@@ -491,7 +487,8 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games won with: ");
           outputBuilder.append(String.format("%s (%d)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()), playedWithStats.getGamesWon()));
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              playedWithStats.getGamesWon()));
           outputBuilder.append("\n");
         });
 
@@ -500,7 +497,8 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games lost with: ");
           outputBuilder.append(String.format("%s (%d)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()), playedWithStats.getGamesLost()));
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              playedWithStats.getGamesLost()));
           outputBuilder.append("\n");
         });
 
@@ -511,7 +509,7 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games won against: ");
           outputBuilder.append(String.format("%s (%d)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesWonAgainst()));
           outputBuilder.append("\n");
         });
@@ -521,7 +519,7 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games lost against: ");
           outputBuilder.append(String.format("%s (%d)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesLostAgainst()));
           outputBuilder.append("\n");
         });
@@ -534,7 +532,7 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Highest win rate with: ");
           outputBuilder.append(String.format("%s (%,.1f%%)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
               playedWithStats.winRate() * 100));
           outputBuilder.append("\n");
         });
@@ -545,7 +543,7 @@ public class PlayerRankingSystemDiscordClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Lowest win rate with: ");
           outputBuilder.append(String.format("%s (%,.1f%%)",
-              mentionPlayer(playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
               playedWithStats.winRate() * 100));
           outputBuilder.append("\n");
         });
@@ -588,52 +586,25 @@ public class PlayerRankingSystemDiscordClient {
 
   private void printMatchOutcome(StringBuilder stringBuilder, MatchOutcome matchOutcome) {
     stringBuilder.append("Winners: ");
-    stringBuilder.append(mentionListOfPLayers(matchOutcome.getWinningPlayers()));
+    stringBuilder
+        .append(DiscordHelper.mentionListOfPLayers(botSystem, matchOutcome.getWinningPlayers()));
     stringBuilder.append("\n");
     stringBuilder.append("Losers: ");
-    stringBuilder.append(mentionListOfPLayers(matchOutcome.getLosingPlayers()));
+    stringBuilder
+        .append(DiscordHelper.mentionListOfPLayers(botSystem, matchOutcome.getLosingPlayers()));
   }
 
   private void printMatch(StringBuilder stringBuilder, Match match) {
     stringBuilder.append("Team 1: ");
-    stringBuilder.append(mentionListOfPLayers(match.getTeam1()));
+    stringBuilder.append(DiscordHelper.mentionListOfPLayers(botSystem, match.getTeam1()));
     stringBuilder.append("\n");
     stringBuilder.append("Team 2: ");
-    stringBuilder.append(mentionListOfPLayers(match.getTeam2()));
+    stringBuilder.append(DiscordHelper.mentionListOfPLayers(botSystem, match.getTeam2()));
     if (match.getMatchQuality().isPresent()) {
       stringBuilder.append("\n");
       stringBuilder.append("\n");
       stringBuilder.append("Match Quality: ");
       stringBuilder.append(String.format("%,.1f%%", match.getMatchQuality().get() * 100));
     }
-  }
-
-  private String mentionListOfPLayers(Collection<Long> playerIds) {
-    return playerIds.stream().map(this::mentionPlayer).collect(Collectors.joining(", "));
-  }
-
-  private String mentionPlayer(long playerId) {
-    IUser user = botSystem.getDiscordClient().getUserByID(playerId);
-    if (user == null) {
-      return String.format("UnknownPlayer-%s", playerId);
-    }
-    return user.mention(true);
-  }
-
-  private String playerName(long playerId, IMessage message) {
-    return botSystem.getDiscordClient().getUserByID(playerId).getDisplayName(message.getGuild());
-  }
-
-  private void registerHandler(BotSystem botSystem, String commandString,
-      DiscordCommandHandler discordCommandHandler) {
-    botSystem
-        .registerHandler(commandString, (isAdmin, arguments, message) -> executor.execute(() -> {
-          try {
-            discordCommandHandler.handle(isAdmin, arguments, message);
-          } catch (Exception e) {
-            logger.error("Error while handling command.", e);
-            message.reply("Error while processing command. Please see server logs.");
-          }
-        }));
   }
 }
