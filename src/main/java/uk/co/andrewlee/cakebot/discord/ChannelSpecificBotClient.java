@@ -29,11 +29,15 @@ public abstract class ChannelSpecificBotClient implements BotClient {
   }
 
   public void init() {
-    botSystem.registerBotClient(this);
+    // Do nothing
   }
 
   public void handle(List<String> arguments, IMessage message) {
     if (!channels.containsKey(message.getChannel().getLongID())) {
+      return;
+    }
+
+    if (arguments.isEmpty()) {
       return;
     }
 

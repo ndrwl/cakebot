@@ -44,7 +44,7 @@ public class PlayerRankingSystem {
   private static final SimpleDateFormat BACKUP_FILE_NAME_FORMAT = new SimpleDateFormat(
       "yyyy-HH-dd_HH-mm-ss-SSS");
   private static final String BACKUP_FOLDER = "backups";
-  private static final String SAVE_FILE = "data";
+  private static final String SAVE_FILE = "aoe";
   private static final String SAVE_FILE_EXTENSION = ".json";
 
   private final PlayerRankingData playerRankingData;
@@ -72,7 +72,7 @@ public class PlayerRankingSystem {
     }
 
     if (Files.exists(saveFile) && !Files.isRegularFile(saveFile)) {
-      throw new IllegalArgumentException(String.format("Save file, %s, is not a file.",
+      throw new IllegalArgumentException(String.format("AoE save file, %s, is not a file.",
           saveFile));
     }
 

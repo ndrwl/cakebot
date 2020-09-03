@@ -50,9 +50,9 @@ public class BotSystem {
     return discordClient;
   }
 
-  public void registerBotClient(ChannelSpecificBotClient client) {
-    botClients.add(client);
+  public void registerBotClient(BotClient client) {
     client.init();
+    botClients.add(client);
   }
 
   private class DiscordEventListener {

@@ -46,7 +46,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
   private final RankedMapSelector rankedMapSelector;
 
   // TODO: Add flags?
-  private final static boolean hideRating = true;
+  private final static boolean HIDE_RATING = true;
 
   @GuardedBy("executor")
   private final PlayerRankingSystem playerRankingSystem;
@@ -287,7 +287,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     }
 
     if (arguments.size() != 3 && arguments.size() != 2) {
-      if (hideRating) {
+      if (HIDE_RATING) {
         message.reply(String.format("Provide one arguments. Usage: %s register [user]",
             mentionBot()));
       } else {
@@ -326,7 +326,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         playerRankingSystem.createPlayerWithDefaultRating(playerId);
       }
 
-      if (hideRating || !initialRating.isPresent()) {
+      if (HIDE_RATING || !initialRating.isPresent()) {
         message.reply(
             String.format("Registered user %s.", DiscordHelper.mentionPlayer(botSystem, playerId)));
       } else {
@@ -385,7 +385,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
   private void listPlayerCommand(List<String> arguments, IMessage message) {
     AsciiTable asciiTable = new AsciiTable();
 
-    if (hideRating) {
+    if (HIDE_RATING) {
       asciiTable.addRule();
       asciiTable.addRow("Player Name", "Games Played", "Win Rate");
       asciiTable.addRule();
@@ -571,7 +571,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       stringBuilder.append("\n");
       stringBuilder.append(createPlayerRankingOperation.getPlayerId());
 
-      if (hideRating) {
+      if (HIDE_RATING) {
         stringBuilder.append(" with rating ");
         stringBuilder.append(createPlayerRankingOperation.getMeanRating());
       }
