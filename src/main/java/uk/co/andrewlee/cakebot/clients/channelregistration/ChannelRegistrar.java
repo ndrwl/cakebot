@@ -11,25 +11,21 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.lang.reflect.Type;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.Executors;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.co.andrewlee.cakebot.clients.channelregistration.serializers.ChannelRegistrationSerializer;
 
 @ThreadSafe
 public class ChannelRegistrar {
 
   private static final Logger logger = LoggerFactory.getLogger(ChannelRegistrar.class);
-  private static final Type CHANNEL_MULTIMAP_TYPE = TypeToken
-      .getParameterized(HashMultimap.class, String.class, Long.class).getType();
-  private static final Gson GSON = new GsonBuilder()
-      .registerTypeAdapter(CHANNEL_MULTIMAP_TYPE, new ChannelRegistrationSerializer())
-      .create();
+  private static final Gson GSON = new GsonBuilder().create();
 
   private static final String SAVE_FILE = "channels";
   private static final String SAVE_FILE_EXTENSION = ".json";
@@ -83,7 +79,7 @@ public class ChannelRegistrar {
   private void save() throws Exception {
     Files.deleteIfExists(saveFile);
     try (BufferedWriter bufferedWriter = Files.newBufferedWriter(saveFile)) {
-      GSON.toJson(registeredChannels, bufferedWriter);
+      GSON.toJson(registeredChannels.asMap(), bufferedWriter);
       logger.info("Saved {} registered channels.", registeredChannels.size());
     }
   }
@@ -92,10 +88,11 @@ public class ChannelRegistrar {
     try (BufferedReader bufferedReader = Files.newBufferedReader(saveFile)) {
       registeredChannels.clear();
 
-      HashMultimap<String, Long> newRegisteredChannels = GSON.fromJson(bufferedReader,
-          CHANNEL_MULTIMAP_TYPE);
+      HashMap<String, ArrayList<Long>> newRegisteredChannels = GSON.fromJson(bufferedReader,
+          TypeToken.getParameterized(HashMap.class, String.class, TypeToken.getParameterized(
+              ArrayList.class, Long.class).getType()).getType());
 
-      registeredChannels.putAll(newRegisteredChannels);
+      newRegisteredChannels.forEach(registeredChannels::putAll);
       logger.info("Loaded {} registered channels.", newRegisteredChannels.size());
     }
   }

@@ -57,8 +57,12 @@ public class BotSystem {
     botClients.add(client);
   }
 
+  public String selfNicknameMention() {
+    return "<@!" + ownUser.getId().asString() + ">";
+  }
+
   public String selfMention() {
-    return ownUser.getMention();
+    return "<@" + ownUser.getId().asString() + ">";
   }
 
   private void handleMessageCreateEvent(MessageCreateEvent event) {
@@ -88,17 +92,15 @@ public class BotSystem {
 
   private Optional<List<String>> extractBotCommand(Message message) {
     String content = message.getContent().trim();
+    Optional<String> commandContentOpt = Optional.empty();
 
-    if (!content.startsWith(selfMention())) {
-      return Optional.empty();
+    if (content.startsWith(selfNicknameMention())) {
+      commandContentOpt = Optional.of(content.substring(selfNicknameMention().length()));
+    } else if (content.startsWith(selfMention())) {
+      commandContentOpt = Optional.of(content.substring(selfMention().length()));
     }
 
-    String commandContent = content.substring(selfMention().length());
-    List<String> splitCommand = Arrays.asList(commandContent.split("\\s+"));
-
-    if (splitCommand.isEmpty()) {
-      return Optional.empty();
-    }
-    return Optional.of(splitCommand);
+    return commandContentOpt.map(commandContent -> 
+        Arrays.asList(commandContent.trim().split("\\s+")));
   }
 }

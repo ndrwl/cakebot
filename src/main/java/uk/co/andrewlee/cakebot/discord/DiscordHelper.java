@@ -63,8 +63,19 @@ public class DiscordHelper {
   }
 
   public static String playerName(BotSystem botSystem, long playerId, Message message) {
-    return message.getGuild().flatMap(guild -> guild.getMemberById(Snowflake.of(playerId)))
-        .map(member -> member.getNickname().orElse(member.getDisplayName()))
-        .block();
+    try {
+      return message.getGuild()
+          .flatMap(guild -> guild.getMemberById(Snowflake.of(playerId)))
+          .map(member -> member.getNickname().orElse(member.getDisplayName()))
+          .block();
+    } catch (Exception e) {
+      try {
+        return botSystem.getDiscordClient().getUserById(Snowflake.of(playerId))
+            .map(User::getUsername)
+            .block();
+      } catch (Exception e2) {
+          return String.format("Unknown-%s", playerId);
+      }
+    }
   }
 }

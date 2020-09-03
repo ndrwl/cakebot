@@ -23,7 +23,8 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.co.andrewlee.cakebot.discord.ChannelSpecificBotClient;
+import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrar;
+import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelSpecificBotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 import uk.co.andrewlee.cakebot.discord.DiscordHelper;
 import uk.co.andrewlee.cakebot.clients.aoe.drafter.RandomCivDrafter;
@@ -39,9 +40,9 @@ import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation.MatchOutcome
 
 @ThreadSafe
 public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
-
   private static final Logger logger = LoggerFactory.getLogger(
       AgeOfEmpiresBotClient.class);
+  private static final String CHANNEL_REGISTRATION_TAG = "aoe";
 
   private final RandomCivDrafter randomCivDrafter;
   private final RankedMapSelector rankedMapSelector;
@@ -55,14 +56,14 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
   private Optional<Match> lastMatch;
 
   public static AgeOfEmpiresBotClient create(BotSystem botSystem, int maxOperationHistory,
-      Path saveDirectory) throws Exception {
+      Path saveDirectory, ChannelRegistrar channelRegistrar) throws Exception {
     return AgeOfEmpiresBotClient.create(botSystem, new FactorGraphTrueSkillCalculator(),
-        GameInfo.getDefaultGameInfo(), maxOperationHistory, saveDirectory);
+        GameInfo.getDefaultGameInfo(), maxOperationHistory, saveDirectory, channelRegistrar);
   }
 
   public static AgeOfEmpiresBotClient create(BotSystem botSystem,
       SkillCalculator skillCalculator, GameInfo gameInfo, int maxOperationHistory,
-      Path saveDirectory) throws Exception {
+      Path saveDirectory, ChannelRegistrar channelRegistrar) throws Exception {
 
     ExecutorService executor = Executors.newSingleThreadExecutor();
     PlayerRankingSystem playerRankingSystem = PlayerRankingSystem
@@ -78,13 +79,13 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     RankedMapSelector rankedMapSelector = RankedMapSelector.create();
 
     return new AgeOfEmpiresBotClient(botSystem, executor, playerRankingSystem,
-        randomCivDrafter, rankedMapSelector);
+        randomCivDrafter, rankedMapSelector, channelRegistrar);
   }
 
   private AgeOfEmpiresBotClient(BotSystem botSystem, ExecutorService executor,
       PlayerRankingSystem playerRankingSystem, RandomCivDrafter randomCivDrafter,
-      RankedMapSelector rankedMapSelector) {
-    super(botSystem, executor);
+      RankedMapSelector rankedMapSelector, ChannelRegistrar channelRegistrar) {
+    super(botSystem, executor, channelRegistrar, CHANNEL_REGISTRATION_TAG);
     this.playerRankingSystem = playerRankingSystem;
     this.randomCivDrafter = randomCivDrafter;
     this.rankedMapSelector = rankedMapSelector;
@@ -177,7 +178,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       DiscordHelper.respond(message,
           String.format("Provide two teams. Usage: %s outcome [player1] [player2] beat [player3] " +
                   "[player4]   or   %s outcome team1 won",
-              botSystem.selfMention(), botSystem.selfMention()));
+              botSystem.selfNicknameMention(), botSystem.selfNicknameMention()));
       return;
     }
 
@@ -290,11 +291,11 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       if (HIDE_RATING) {
         DiscordHelper
             .respond(message, String.format("Provide one arguments. Usage: %s register [user]",
-                botSystem.selfMention()));
+                botSystem.selfNicknameMention()));
       } else {
         DiscordHelper.respond(message,
             String.format("Provide two arguments. Usage: %s register [user] [rating]",
-                botSystem.selfMention()));
+                botSystem.selfNicknameMention()));
       }
       return;
     }
@@ -310,7 +311,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     if (!playerIdOpt.isPresent()) {
       DiscordHelper.respond(message, String
           .format("Unknown player %s. Please mention the player, for example %s register %s 25",
-              playerMention, botSystem.selfMention(), botSystem.selfMention()));
+              playerMention, botSystem.selfNicknameMention(), botSystem.selfNicknameMention()));
       return;
     }
 

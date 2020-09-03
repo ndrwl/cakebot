@@ -2,6 +2,7 @@ package uk.co.andrewlee.cakebot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrar;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrationBotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 
@@ -25,8 +26,9 @@ public class CakeBot {
 
     ChannelRegistrationBotClient channelRegistrationBotClient = ChannelRegistrationBotClient
         .create(botSystem, saveDirectory);
+    ChannelRegistrar channelRegistrar = channelRegistrationBotClient.getChannelRegistrar();
     AgeOfEmpiresBotClient ageOfEmpiresBotClient = AgeOfEmpiresBotClient
-        .create(botSystem, 10, saveDirectory);
+        .create(botSystem, 10, saveDirectory, channelRegistrar);
 
     botSystem.registerBotClient(channelRegistrationBotClient);
     botSystem.registerBotClient(ageOfEmpiresBotClient);
