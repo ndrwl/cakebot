@@ -1,7 +1,5 @@
 package uk.co.andrewlee.cakebot;
 
-import de.gesundkrank.jskills.GameInfo;
-import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
@@ -24,10 +22,9 @@ public class CakeBot {
 
     BotSystem botSystem = BotSystem.create(args[0]);
 
-    AgeOfEmpiresBotClient playerRankingClient = AgeOfEmpiresBotClient
-        .create(botSystem, new FactorGraphTrueSkillCalculator(),
-            GameInfo.getDefaultGameInfo(), 10, saveDirectory);
-    playerRankingClient.init();
+    AgeOfEmpiresBotClient ageOfEmpiresBotClient = AgeOfEmpiresBotClient
+        .create(botSystem, 10, saveDirectory);
+    botSystem.registerBotClient(ageOfEmpiresBotClient);
 
     botSystem.start();
   }

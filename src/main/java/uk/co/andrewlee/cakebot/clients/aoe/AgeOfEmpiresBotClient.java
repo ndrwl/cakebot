@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.SkillCalculator;
+import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
 import de.vandermeer.asciitable.AsciiTable;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -21,7 +22,7 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.handle.obj.IVoiceState;
-import uk.co.andrewlee.cakebot.discord.BotClient;
+import uk.co.andrewlee.cakebot.discord.ChannelSpecificBotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 import uk.co.andrewlee.cakebot.discord.DiscordHelper;
 import uk.co.andrewlee.cakebot.clients.aoe.drafter.RandomCivDrafter;
@@ -36,7 +37,7 @@ import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation.CreatePlayer
 import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @ThreadSafe
-public class AgeOfEmpiresBotClient extends BotClient {
+public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
 
   private static final Logger logger = LoggerFactory.getLogger(
       AgeOfEmpiresBotClient.class);
@@ -51,6 +52,12 @@ public class AgeOfEmpiresBotClient extends BotClient {
   private final PlayerRankingSystem playerRankingSystem;
   @GuardedBy("executor")
   private Optional<Match> lastMatch;
+
+  public static AgeOfEmpiresBotClient create(BotSystem botSystem, int maxOperationHistory,
+      Path saveDirectory) throws Exception {
+    return AgeOfEmpiresBotClient.create(botSystem, new FactorGraphTrueSkillCalculator(),
+        GameInfo.getDefaultGameInfo(), maxOperationHistory, saveDirectory);
+  }
 
   public static AgeOfEmpiresBotClient create(BotSystem botSystem,
       SkillCalculator skillCalculator, GameInfo gameInfo, int maxOperationHistory,

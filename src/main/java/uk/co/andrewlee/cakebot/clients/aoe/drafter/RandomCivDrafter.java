@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 
 public class RandomCivDrafter {
+
   private final static String CIV_FILE = "civilizations.txt";
 
   private final ImmutableList<String> civList;
