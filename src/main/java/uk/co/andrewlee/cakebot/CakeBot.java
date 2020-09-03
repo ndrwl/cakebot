@@ -11,7 +11,6 @@ import java.nio.file.Paths;
 import uk.co.andrewlee.cakebot.clients.aoe.AgeOfEmpiresBotClient;
 
 public class CakeBot {
-
   private static final Logger logger = LoggerFactory.getLogger(CakeBot.class);
 
   public static void main(String[] args) throws Exception {
