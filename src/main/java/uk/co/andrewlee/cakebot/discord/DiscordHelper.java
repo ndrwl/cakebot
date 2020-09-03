@@ -1,4 +1,4 @@
-package uk.co.andrewlee.discord;
+package uk.co.andrewlee.cakebot.discord;
 
 import com.google.common.collect.ImmutableList;
 import java.util.Collection;

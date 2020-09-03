@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking.serializers;
+package uk.co.andrewlee.cakebot.ranking.serializers;
 
 import com.google.gson.JsonDeserializationContext;
 import com.google.gson.JsonDeserializer;

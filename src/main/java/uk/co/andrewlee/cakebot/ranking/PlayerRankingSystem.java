@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking;
+package uk.co.andrewlee.cakebot.ranking;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -33,9 +33,9 @@ import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.co.andrewlee.ranking.PlayerRankingData.PlayerStats;
-import uk.co.andrewlee.ranking.RankingOperation.CreatePlayerRankingOperation;
-import uk.co.andrewlee.ranking.RankingOperation.MatchOutcomeRankingOperation;
+import uk.co.andrewlee.cakebot.ranking.PlayerRankingData.PlayerStats;
+import uk.co.andrewlee.cakebot.ranking.RankingOperation.CreatePlayerRankingOperation;
+import uk.co.andrewlee.cakebot.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @NotThreadSafe
 public class PlayerRankingSystem {

@@ -1,4 +1,4 @@
-package uk.co.andrewlee.drafter;
+package uk.co.andrewlee.cakebot.drafter;
 
 import com.google.common.collect.ImmutableList;
 import java.io.InputStreamReader;

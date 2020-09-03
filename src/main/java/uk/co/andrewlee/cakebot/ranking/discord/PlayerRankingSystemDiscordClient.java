@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking.discord;
+package uk.co.andrewlee.cakebot.ranking.discord;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -13,7 +13,6 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -22,19 +21,19 @@ import sx.blah.discord.handle.obj.IMessage;
 import sx.blah.discord.handle.obj.IUser;
 import sx.blah.discord.handle.obj.IVoiceChannel;
 import sx.blah.discord.handle.obj.IVoiceState;
-import uk.co.andrewlee.discord.BotClient;
-import uk.co.andrewlee.discord.BotSystem;
-import uk.co.andrewlee.discord.DiscordHelper;
-import uk.co.andrewlee.drafter.RandomCivDrafter;
-import uk.co.andrewlee.drafter.RankedMapSelector;
-import uk.co.andrewlee.ranking.Match;
-import uk.co.andrewlee.ranking.MatchOutcome;
-import uk.co.andrewlee.ranking.PlayerRankingData.PlayedWithStats;
-import uk.co.andrewlee.ranking.PlayerRankingData.PlayerStats;
-import uk.co.andrewlee.ranking.PlayerRankingSystem;
-import uk.co.andrewlee.ranking.RankingOperation;
-import uk.co.andrewlee.ranking.RankingOperation.CreatePlayerRankingOperation;
-import uk.co.andrewlee.ranking.RankingOperation.MatchOutcomeRankingOperation;
+import uk.co.andrewlee.cakebot.discord.BotClient;
+import uk.co.andrewlee.cakebot.discord.BotSystem;
+import uk.co.andrewlee.cakebot.discord.DiscordHelper;
+import uk.co.andrewlee.cakebot.drafter.RandomCivDrafter;
+import uk.co.andrewlee.cakebot.drafter.RankedMapSelector;
+import uk.co.andrewlee.cakebot.ranking.Match;
+import uk.co.andrewlee.cakebot.ranking.MatchOutcome;
+import uk.co.andrewlee.cakebot.ranking.PlayerRankingData.PlayedWithStats;
+import uk.co.andrewlee.cakebot.ranking.PlayerRankingData.PlayerStats;
+import uk.co.andrewlee.cakebot.ranking.PlayerRankingSystem;
+import uk.co.andrewlee.cakebot.ranking.RankingOperation;
+import uk.co.andrewlee.cakebot.ranking.RankingOperation.CreatePlayerRankingOperation;
+import uk.co.andrewlee.cakebot.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @ThreadSafe
 public class PlayerRankingSystemDiscordClient extends BotClient {

@@ -1,4 +1,4 @@
-package uk.co.andrewlee.discord;
+package uk.co.andrewlee.cakebot.discord;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

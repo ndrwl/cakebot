@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking;
+package uk.co.andrewlee.cakebot.ranking;
 
 public interface RankingOperation {
 

@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking;
+package uk.co.andrewlee.cakebot.ranking;
 
 import com.google.common.collect.ImmutableList;
 

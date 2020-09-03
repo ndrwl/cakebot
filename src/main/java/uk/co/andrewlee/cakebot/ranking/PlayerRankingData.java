@@ -1,4 +1,4 @@
-package uk.co.andrewlee.ranking;
+package uk.co.andrewlee.cakebot.ranking;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -24,8 +24,8 @@ import java.util.Optional;
 import javax.annotation.concurrent.NotThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.co.andrewlee.ranking.serializers.MatchOutcomeSerializer;
-import uk.co.andrewlee.ranking.serializers.RatingSerializer;
+import uk.co.andrewlee.cakebot.ranking.serializers.MatchOutcomeSerializer;
+import uk.co.andrewlee.cakebot.ranking.serializers.RatingSerializer;
 
 @NotThreadSafe
 public class PlayerRankingData {

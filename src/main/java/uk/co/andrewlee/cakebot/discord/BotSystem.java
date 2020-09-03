@@ -1,4 +1,4 @@
-package uk.co.andrewlee.discord;
+package uk.co.andrewlee.cakebot.discord;
 
 import java.util.Arrays;
 import java.util.List;

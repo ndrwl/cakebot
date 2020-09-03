@@ -31,7 +31,7 @@
             <manifest>
               <addClasspath>true</addClasspath>
               <classpathPrefix>lib/</classpathPrefix>
-              <mainClass>uk.co.andrewlee.CakeBot</mainClass>
+              <mainClass>uk.co.andrewlee.cakebot.CakeBot</mainClass>
             </manifest>
           </archive>
         </configuration>

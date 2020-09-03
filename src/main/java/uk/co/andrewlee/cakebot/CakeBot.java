@@ -1,14 +1,14 @@
-package uk.co.andrewlee;
+package uk.co.andrewlee.cakebot;
 
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.co.andrewlee.discord.BotSystem;
+import uk.co.andrewlee.cakebot.discord.BotSystem;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import uk.co.andrewlee.ranking.discord.PlayerRankingSystemDiscordClient;
+import uk.co.andrewlee.cakebot.ranking.discord.PlayerRankingSystemDiscordClient;
 
 public class CakeBot {
 
