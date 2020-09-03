@@ -1,4 +1,4 @@
-package uk.co.andrewlee.cakebot.ranking.serializers;
+package uk.co.andrewlee.cakebot.clients.aoe.ranking.serializers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.reflect.TypeToken;
@@ -10,8 +10,8 @@ import com.google.gson.JsonParseException;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import java.util.Optional;
-import uk.co.andrewlee.cakebot.ranking.Match;
-import uk.co.andrewlee.cakebot.ranking.MatchOutcome;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.Match;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.MatchOutcome;
 
 import java.lang.reflect.Type;
 import java.util.List;

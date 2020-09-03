@@ -8,7 +8,7 @@ import uk.co.andrewlee.cakebot.discord.BotSystem;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import uk.co.andrewlee.cakebot.ranking.discord.PlayerRankingSystemDiscordClient;
+import uk.co.andrewlee.cakebot.clients.aoe.AgeOfEmpiresBotClient;
 
 public class CakeBot {
 
@@ -24,7 +24,7 @@ public class CakeBot {
 
     BotSystem botSystem = BotSystem.create(args[0]);
 
-    PlayerRankingSystemDiscordClient playerRankingClient = PlayerRankingSystemDiscordClient
+    AgeOfEmpiresBotClient playerRankingClient = AgeOfEmpiresBotClient
         .create(botSystem, new FactorGraphTrueSkillCalculator(),
             GameInfo.getDefaultGameInfo(), 10, saveDirectory);
     playerRankingClient.init();

@@ -1,4 +1,4 @@
-package uk.co.andrewlee.cakebot.ranking.discord;
+package uk.co.andrewlee.cakebot.clients.aoe;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -24,22 +24,22 @@ import sx.blah.discord.handle.obj.IVoiceState;
 import uk.co.andrewlee.cakebot.discord.BotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 import uk.co.andrewlee.cakebot.discord.DiscordHelper;
-import uk.co.andrewlee.cakebot.drafter.RandomCivDrafter;
-import uk.co.andrewlee.cakebot.drafter.RankedMapSelector;
-import uk.co.andrewlee.cakebot.ranking.Match;
-import uk.co.andrewlee.cakebot.ranking.MatchOutcome;
-import uk.co.andrewlee.cakebot.ranking.PlayerRankingData.PlayedWithStats;
-import uk.co.andrewlee.cakebot.ranking.PlayerRankingData.PlayerStats;
-import uk.co.andrewlee.cakebot.ranking.PlayerRankingSystem;
-import uk.co.andrewlee.cakebot.ranking.RankingOperation;
-import uk.co.andrewlee.cakebot.ranking.RankingOperation.CreatePlayerRankingOperation;
-import uk.co.andrewlee.cakebot.ranking.RankingOperation.MatchOutcomeRankingOperation;
+import uk.co.andrewlee.cakebot.clients.aoe.drafter.RandomCivDrafter;
+import uk.co.andrewlee.cakebot.clients.aoe.drafter.RankedMapSelector;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.Match;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.MatchOutcome;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.PlayerRankingData.PlayedWithStats;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.PlayerRankingData.PlayerStats;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.PlayerRankingSystem;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation.CreatePlayerRankingOperation;
+import uk.co.andrewlee.cakebot.clients.aoe.ranking.RankingOperation.MatchOutcomeRankingOperation;
 
 @ThreadSafe
-public class PlayerRankingSystemDiscordClient extends BotClient {
+public class AgeOfEmpiresBotClient extends BotClient {
 
   private static final Logger logger = LoggerFactory.getLogger(
-      PlayerRankingSystemDiscordClient.class);
+      AgeOfEmpiresBotClient.class);
 
   private final RandomCivDrafter randomCivDrafter;
   private final RankedMapSelector rankedMapSelector;
@@ -52,7 +52,7 @@ public class PlayerRankingSystemDiscordClient extends BotClient {
   @GuardedBy("executor")
   private Optional<Match> lastMatch;
 
-  public static PlayerRankingSystemDiscordClient create(BotSystem botSystem,
+  public static AgeOfEmpiresBotClient create(BotSystem botSystem,
       SkillCalculator skillCalculator, GameInfo gameInfo, int maxOperationHistory,
       Path saveDirectory) throws Exception {
 
@@ -69,11 +69,11 @@ public class PlayerRankingSystemDiscordClient extends BotClient {
     RandomCivDrafter randomCivDrafter = RandomCivDrafter.create();
     RankedMapSelector rankedMapSelector = RankedMapSelector.create();
 
-    return new PlayerRankingSystemDiscordClient(botSystem, executor, playerRankingSystem,
+    return new AgeOfEmpiresBotClient(botSystem, executor, playerRankingSystem,
         randomCivDrafter, rankedMapSelector);
   }
 
-  private PlayerRankingSystemDiscordClient(BotSystem botSystem, ExecutorService executor,
+  private AgeOfEmpiresBotClient(BotSystem botSystem, ExecutorService executor,
       PlayerRankingSystem playerRankingSystem, RandomCivDrafter randomCivDrafter,
       RankedMapSelector rankedMapSelector) {
     super(botSystem, executor);
