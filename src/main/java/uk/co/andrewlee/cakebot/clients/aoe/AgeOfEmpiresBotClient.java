@@ -6,6 +6,11 @@ import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.SkillCalculator;
 import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
 import de.vandermeer.asciitable.AsciiTable;
+import discord4j.common.util.Snowflake;
+import discord4j.core.object.VoiceState;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.VoiceChannel;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
@@ -18,10 +23,6 @@ import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.handle.obj.IVoiceChannel;
-import sx.blah.discord.handle.obj.IVoiceState;
 import uk.co.andrewlee.cakebot.discord.ChannelSpecificBotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 import uk.co.andrewlee.cakebot.discord.DiscordHelper;
@@ -108,31 +109,30 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     super.init();
   }
 
-  private void gameCommand(List<String> arguments, IMessage message) {
+  private void gameCommand(List<String> arguments, Message message) {
     List<String> players = arguments.subList(1, arguments.size());
     try {
       ImmutableList<Long> playerIds = DiscordHelper.parseUserList(players);
       findBalancedGame(playerIds, message);
     } catch (IllegalArgumentException e) {
-      message.reply(e.getMessage());
+      DiscordHelper.respond(message, e.getMessage());
     }
   }
 
-  private void channelGameCommand(List<String> arguments, IMessage message) {
-    IVoiceState voiceState = message.getAuthor().getVoiceStateForGuild(message.getGuild());
-    if (voiceState == null) {
-      message.reply("Not in voice channel.");
+  private void channelGameCommand(List<String> arguments, Message message) {
+    VoiceChannel voiceChannel = message.getAuthorAsMember().flatMap(Member::getVoiceState)
+        .flatMap(VoiceState::getChannel).block();
+
+    if (voiceChannel == null) {
+      DiscordHelper.respond(message, "Not in voice channel.");
       return;
     }
 
-    IVoiceChannel channel = voiceState.getChannel();
-    if (channel == null) {
-      message.reply("Not in voice channel.");
-      return;
-    }
-
-    ImmutableList<Long> channelUsers = channel.getConnectedUsers().stream().map(IUser::getLongID)
-        .collect(ImmutableList.toImmutableList());
+    ImmutableList<Long> channelUsers = voiceChannel.getVoiceStates()
+        .map(VoiceState::getUserId)
+        .map(Snowflake::asLong)
+        .collect(ImmutableList.toImmutableList())
+        .block();
 
     List<String> extraPlayers = arguments.subList(1, arguments.size());
     try {
@@ -142,11 +142,11 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
           .addAll(otherPlayerIds)
           .build(), message);
     } catch (IllegalArgumentException e) {
-      message.reply(e.getMessage());
+      DiscordHelper.respond(message, e.getMessage());
     }
   }
 
-  private void findBalancedGame(ImmutableList<Long> playerIds, IMessage message) {
+  private void findBalancedGame(ImmutableList<Long> playerIds, Message message) {
     Match match = playerRankingSystem.findBalancedMatch(ImmutableSet.copyOf(playerIds));
 
     StringBuilder outputBuilder = new StringBuilder();
@@ -162,22 +162,22 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     outputBuilder.append("Map: ");
     outputBuilder.append(rankedMapSelector.randomMap());
 
-    message.reply(outputBuilder.toString());
+    DiscordHelper.respond(message, outputBuilder.toString());
 
     lastMatch = Optional.of(match);
   }
 
-  private void gameOutcomeCommand(List<String> arguments, IMessage message) {
+  private void gameOutcomeCommand(List<String> arguments, Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
     int split = arguments.indexOf("beat");
     if (split == -1) {
-      message.reply(
+      DiscordHelper.respond(message,
           String.format("Provide two teams. Usage: %s outcome [player1] [player2] beat [player3] " +
                   "[player4]   or   %s outcome team1 won",
-              mentionBot(), mentionBot()));
+              botSystem.selfMention(), botSystem.selfMention()));
       return;
     }
 
@@ -187,22 +187,22 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
           arguments.size()));
 
       if (winingUserIds.isEmpty()) {
-        message.reply("Must be at least 1 winner.");
+        DiscordHelper.respond(message, "Must be at least 1 winner.");
         return;
       }
       if (losingUserIds.isEmpty()) {
-        message.reply("Must be at least 1 loser.");
+        DiscordHelper.respond(message, "Must be at least 1 loser.");
         return;
       }
 
       recordMatchOutcome(MatchOutcome.createTeam1Won(new Match(winingUserIds, losingUserIds,
           Optional.empty())), message);
     } catch (IllegalArgumentException e) {
-      message.reply(e.getMessage());
+      DiscordHelper.respond(message, e.getMessage());
     }
   }
 
-  private void teamOutcomeCommand(List<String> arguments, IMessage message) {
+  private void teamOutcomeCommand(List<String> arguments, Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
@@ -231,7 +231,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     }
   }
 
-  private void team2OutcomeCommand(List<String> arguments, IMessage message) {
+  private void team2OutcomeCommand(List<String> arguments, Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
@@ -249,23 +249,23 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     }
   }
 
-  private void registerTeam1Won(IMessage message) {
+  private void registerTeam1Won(Message message) {
     if (!lastMatch.isPresent()) {
-      message.reply("No previous match.");
+      DiscordHelper.respond(message, "No previous match.");
       return;
     }
     recordMatchOutcome(MatchOutcome.createTeam1Won(lastMatch.get()), message);
   }
 
-  private void registerTeam2Won(IMessage message) {
+  private void registerTeam2Won(Message message) {
     if (!lastMatch.isPresent()) {
-      message.reply("No previous match.");
+      DiscordHelper.respond(message, "No previous match.");
       return;
     }
     recordMatchOutcome(MatchOutcome.createTeam2Won(lastMatch.get()), message);
   }
 
-  private void recordMatchOutcome(MatchOutcome matchOutcome, IMessage message) {
+  private void recordMatchOutcome(MatchOutcome matchOutcome, Message message) {
     try {
       playerRankingSystem.recordMatchOutcome(matchOutcome);
       StringBuilder outputBuilder = new StringBuilder();
@@ -273,26 +273,28 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       outputBuilder.append("\n");
       outputBuilder.append("\n");
       printMatchOutcome(outputBuilder, matchOutcome);
-      message.reply(outputBuilder.toString());
+      DiscordHelper.respond(message, outputBuilder.toString());
     } catch (Exception e) {
       logger.error("Error recording match outcome.", e);
-      message.reply("Error recording match outcome. Please check server logs.");
+      DiscordHelper.respond(message, "Error recording match outcome. Please check server logs.");
     }
   }
 
   private void registerPlayerCommand(List<String> arguments,
-      IMessage message) {
+      Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
 
     if (arguments.size() != 3 && arguments.size() != 2) {
       if (HIDE_RATING) {
-        message.reply(String.format("Provide one arguments. Usage: %s register [user]",
-            mentionBot()));
+        DiscordHelper
+            .respond(message, String.format("Provide one arguments. Usage: %s register [user]",
+                botSystem.selfMention()));
       } else {
-        message.reply(String.format("Provide two arguments. Usage: %s register [user] [rating]",
-            mentionBot()));
+        DiscordHelper.respond(message,
+            String.format("Provide two arguments. Usage: %s register [user] [rating]",
+                botSystem.selfMention()));
       }
       return;
     }
@@ -306,15 +308,15 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
 
     Optional<Long> playerIdOpt = DiscordHelper.extractUserId(playerMention);
     if (!playerIdOpt.isPresent()) {
-      message.reply(String
+      DiscordHelper.respond(message, String
           .format("Unknown player %s. Please mention the player, for example %s register %s 25",
-              playerMention, mentionBot(), mentionBot()));
+              playerMention, botSystem.selfMention(), botSystem.selfMention()));
       return;
     }
 
     long playerId = playerIdOpt.get();
     if (playerRankingSystem.hasPlayer(playerId)) {
-      message.reply(String.format("User %s is already registered.",
+      DiscordHelper.respond(message, String.format("User %s is already registered.",
           DiscordHelper.mentionPlayer(botSystem, playerId)));
       return;
     }
@@ -327,19 +329,19 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       }
 
       if (HIDE_RATING || !initialRating.isPresent()) {
-        message.reply(
+        DiscordHelper.respond(message,
             String.format("Registered user %s.", DiscordHelper.mentionPlayer(botSystem, playerId)));
       } else {
-        message.reply(String.format("Registered user %s, with mean rating %s.",
+        DiscordHelper.respond(message, String.format("Registered user %s, with mean rating %s.",
             DiscordHelper.mentionPlayer(botSystem, playerId), initialRating.get()));
       }
     } catch (Exception e) {
       logger.error("Error registering user.", e);
-      message.reply("Error registering user. Please check server logs.");
+      DiscordHelper.respond(message, "Error registering user. Please check server logs.");
     }
   }
 
-  private void undoCommand(List<String> arguments, IMessage message) {
+  private void undoCommand(List<String> arguments, Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
@@ -348,22 +350,23 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       Optional<RankingOperation> rankingOperation = playerRankingSystem.undoLastRankingChange();
 
       if (!rankingOperation.isPresent()) {
-        message.reply("No operations to undo.");
+        DiscordHelper.respond(message, "No operations to undo.");
       } else {
         StringBuilder outputBuilder = new StringBuilder();
         outputBuilder.append("**Undo operation**");
         outputBuilder.append("\n");
         outputBuilder.append("\n");
         printRankingOperation(outputBuilder, rankingOperation.get());
-        message.reply(outputBuilder.toString());
+        DiscordHelper.respond(message, outputBuilder.toString());
       }
     } catch (Exception e) {
       logger.error("Error undoing last ranking change.", e);
-      message.reply("Error undoing last ranking change. Please check server logs.");
+      DiscordHelper
+          .respond(message, "Error undoing last ranking change. Please check server logs.");
     }
   }
 
-  private void lastCommand(List<String> arguments, IMessage message) {
+  private void lastCommand(List<String> arguments, Message message) {
     if (!DiscordHelper.messageIsFromAdmin(message)) {
       return;
     }
@@ -371,18 +374,18 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     Optional<RankingOperation> rankingOperation = playerRankingSystem.lastOperation();
 
     if (!rankingOperation.isPresent()) {
-      message.reply("No previous operations.");
+      DiscordHelper.respond(message, "No previous operations.");
     } else {
       StringBuilder outputBuilder = new StringBuilder();
       outputBuilder.append("**Last operation**");
       outputBuilder.append("\n");
       outputBuilder.append("\n");
       printRankingOperation(outputBuilder, rankingOperation.get());
-      message.reply(outputBuilder.toString());
+      DiscordHelper.respond(message, outputBuilder.toString());
     }
   }
 
-  private void listPlayerCommand(List<String> arguments, IMessage message) {
+  private void listPlayerCommand(List<String> arguments, Message message) {
     AsciiTable asciiTable = new AsciiTable();
 
     if (HIDE_RATING) {
@@ -421,41 +424,47 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
           });
 
       asciiTable.addRule();
-      message.reply("```" + asciiTable.render() + "```");
+      DiscordHelper.respond(message, "```" + asciiTable.render() + "```");
     }
-    message.reply("```" + asciiTable.render() + "```");
+    DiscordHelper.respond(message, "```" + asciiTable.render() + "```");
   }
 
-  private void randomDraft(List<String> arguments, IMessage message) {
+  private void randomDraft(List<String> arguments, Message message) {
     int numberOfPlayers = 12;
     if (arguments.size() >= 2) {
       numberOfPlayers = Integer.parseInt(arguments.get(1));
     }
 
     ImmutableList<String> randomCivs = randomCivDrafter.randomDraft(numberOfPlayers);
-    message.reply("**Here are your randomly chosen civs:**\n\n" + String.join(", ", randomCivs));
+    DiscordHelper.respond(message,
+        "**Here are your randomly chosen civs:**\n\n" + String.join(", ", randomCivs));
   }
 
-  private void listMaps(List<String> arguments, IMessage message) {
+  private void listMaps(List<String> arguments, Message message) {
     ImmutableList<String> maps = rankedMapSelector.allRankedMaps();
 
-    message.reply("The maps in the current ranked pool are:\n" + String.join(", ", maps));
+    DiscordHelper
+        .respond(message, "The maps in the current ranked pool are:\n" + String.join(", ", maps));
 
   }
 
-  private void statCommand(List<String> arguments, IMessage message) {
+  private void statCommand(List<String> arguments, Message message) {
     if (arguments.size() > 2) {
       return;
     }
 
     if (arguments.size() == 1) {
-      postStats(message.getAuthor().getLongID(), message);
+      if (message.getAuthor().isPresent()) {
+        DiscordHelper.respond(message, "Could not get message author.");
+        return;
+      }
+      postStats(message.getAuthor().get().getId().asLong(), message);
       return;
     }
 
     Optional<Long> userIdOpt = DiscordHelper.extractUserId(arguments.get(1));
     if (!userIdOpt.isPresent()) {
-      message.reply(String.format("Unknown user %s.", arguments.get(1)));
+      DiscordHelper.respond(message, String.format("Unknown user %s.", arguments.get(1)));
       return;
     }
 
@@ -463,10 +472,10 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     postStats(userId, message);
   }
 
-  private void postStats(long userId, IMessage message) {
+  private void postStats(long userId, Message message) {
     Optional<PlayerStats> playerStatsOpt = playerRankingSystem.getPlayerStats(userId);
     if (!playerStatsOpt.isPresent()) {
-      message.reply(
+      DiscordHelper.respond(message,
           String.format("No stats for user %s.", DiscordHelper.mentionPlayer(botSystem, userId)));
       return;
     }
@@ -554,11 +563,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
           outputBuilder.append("\n");
         });
 
-    message.reply(outputBuilder.toString());
-  }
-
-  private String mentionBot() {
-    return botSystem.getDiscordClient().getOurUser().mention();
+    DiscordHelper.respond(message, outputBuilder.toString());
   }
 
   private void printRankingOperation(StringBuilder stringBuilder,

@@ -1,8 +1,8 @@
 package uk.co.andrewlee.cakebot.discord;
 
+import discord4j.core.object.entity.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sx.blah.discord.handle.obj.IMessage;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.List;
@@ -32,8 +32,8 @@ public abstract class ChannelSpecificBotClient implements BotClient {
     // Do nothing
   }
 
-  public void handle(List<String> arguments, IMessage message) {
-    if (!channels.containsKey(message.getChannel().getLongID())) {
+  public void handle(List<String> arguments, Message message) {
+    if (!channels.containsKey(message.getChannelId().asLong())) {
       return;
     }
 
@@ -55,7 +55,8 @@ public abstract class ChannelSpecificBotClient implements BotClient {
         handler.handle(arguments, message);
       } catch (Exception e) {
         logger.error("Error while handling command.", e);
-        message.reply("Error while processing command. Please see server logs.");
+        DiscordHelper.respond(message,
+            "Error while processing command. Please see server logs.");
       }
     });
   }
@@ -71,6 +72,6 @@ public abstract class ChannelSpecificBotClient implements BotClient {
   @FunctionalInterface
   public interface DiscordCommandHandler {
 
-    void handle(List<String> arguments, IMessage message) throws Exception;
+    void handle(List<String> arguments, Message message) throws Exception;
   }
 }

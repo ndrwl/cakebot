@@ -1,13 +1,14 @@
 package uk.co.andrewlee.cakebot.discord;
 
 import com.google.common.collect.ImmutableList;
+import discord4j.common.util.Snowflake;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
+import discord4j.rest.util.Permission;
 import java.util.Collection;
 import java.util.stream.Collectors;
-import sx.blah.discord.handle.obj.IMessage;
-import sx.blah.discord.handle.obj.IUser;
-import sx.blah.discord.handle.obj.Permissions;
 
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
@@ -39,10 +40,15 @@ public class DiscordHelper {
     return users.build();
   }
 
-  public static boolean messageIsFromAdmin(IMessage message) {
-    EnumSet<Permissions> authorPermissions = message.getAuthor()
-        .getPermissionsForGuild(message.getGuild());
-    return authorPermissions.contains(Permissions.ADMINISTRATOR);
+  public static void respond(Message originalMessage, String reply) {
+    originalMessage.getChannel().flatMap(channel -> channel.createMessage(reply)).block();
+  }
+
+  public static boolean messageIsFromAdmin(Message message) {
+    Boolean isMessageFromAdmin = message.getAuthorAsMember().flatMap(Member::getBasePermissions)
+        .map(permissionSet -> permissionSet.contains(Permission.ADMINISTRATOR))
+        .block();
+    return isMessageFromAdmin;
   }
 
   public static String mentionListOfPLayers(BotSystem botSystem, Collection<Long> playerIds) {
@@ -51,14 +57,14 @@ public class DiscordHelper {
   }
 
   public static String mentionPlayer(BotSystem botSystem, long playerId) {
-    IUser user = botSystem.getDiscordClient().getUserByID(playerId);
-    if (user == null) {
-      return String.format("UnknownPlayer-%s", playerId);
-    }
-    return user.mention(true);
+    return botSystem.getDiscordClient().getUserById(Snowflake.of(playerId))
+        .map(User::getMention)
+        .block();
   }
 
-  public static String playerName(BotSystem botSystem, long playerId, IMessage message) {
-    return botSystem.getDiscordClient().getUserByID(playerId).getDisplayName(message.getGuild());
+  public static String playerName(BotSystem botSystem, long playerId, Message message) {
+    return message.getGuild().flatMap(guild -> guild.getMemberById(Snowflake.of(playerId)))
+        .map(member -> member.getNickname().orElse(member.getDisplayName()))
+        .block();
   }
 }
