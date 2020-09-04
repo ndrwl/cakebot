@@ -2,11 +2,16 @@ package uk.co.andrewlee.cakebot.clients.lol;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import de.vandermeer.asciitable.AsciiTable;
+import discord4j.common.util.Snowflake;
+import discord4j.core.object.VoiceState;
+import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.channel.VoiceChannel;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -20,6 +25,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrar;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelSpecificBotClient;
+import uk.co.andrewlee.cakebot.clients.lol.matchmaking.Match;
 import uk.co.andrewlee.cakebot.clients.lol.matchmaking.PlayerMatchmakingData.PlayerData;
 import uk.co.andrewlee.cakebot.clients.lol.matchmaking.PlayerMatchmakingSystem;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
@@ -68,16 +74,80 @@ public class LeagueOfLegendsBotClient extends ChannelSpecificBotClient {
     super.init();
   }
 
+  // TODO: Deduplicate code from here and AoEBotClient
   private void gameCommand(List<String> arguments, Message message) {
+    HashSet<Long> players = new HashSet<>();
+    for (String argument : arguments.subList(1, arguments.size())) {
+      Optional<Long> playerIdOpt = DiscordHelper.extractUserId(argument);
 
+      if (!playerIdOpt.isPresent()) {
+        DiscordHelper.respond(message, String.format("Unknown player %s.", argument));
+        return;
+      }
+
+      players.add(playerIdOpt.get());
+    }
+
+    findBalancedGame(ImmutableSet.copyOf(players), message);
   }
 
   private void channelGameCommand(List<String> arguments, Message message) {
+    VoiceChannel voiceChannel = message.getAuthorAsMember().flatMap(Member::getVoiceState)
+        .flatMap(VoiceState::getChannel).block();
 
+    if (voiceChannel == null) {
+      DiscordHelper.respond(message, "Not in voice channel.");
+      return;
+    }
+
+    ImmutableList<Long> channelUsers = voiceChannel.getVoiceStates()
+        .map(VoiceState::getUserId)
+        .map(Snowflake::asLong)
+        .collect(ImmutableList.toImmutableList())
+        .block();
+
+    HashSet<Long> players = new HashSet<>();
+    players.addAll(channelUsers);
+
+    for (String argument : arguments.subList(1, arguments.size())) {
+      boolean addPlayer = true;
+      String playerString = argument;
+
+      if (argument.startsWith("+")) {
+        playerString = argument.substring(1);
+      } else if (argument.startsWith("-")) {
+        addPlayer = false;
+        playerString = argument.substring(1);
+      }
+      Optional<Long> playerIdOpt = DiscordHelper.extractUserId(playerString);
+
+      if (!playerIdOpt.isPresent()) {
+        DiscordHelper.respond(message, String.format("Unknown player %s.", playerString));
+        return;
+      }
+
+      if (addPlayer) {
+        players.add(playerIdOpt.get());
+      } else if (argument.startsWith("-")) {
+        players.remove(playerIdOpt.get());
+      }
+    }
+
+    findBalancedGame(ImmutableSet.copyOf(players), message);
   }
 
-  private void findBalancedGame(ImmutableList<Long> playerIds, Message message) {
+  private void findBalancedGame(ImmutableSet<Long> playerIds, Message message) {
+    for (long playerId : playerIds) {
+      if (!playerMatchmakingSystem.hasPlayerData(playerId)) {
+        DiscordHelper.respond(message, String.format("Player %s not registered. Please use the "
+            + "register command.", DiscordHelper.mentionPlayer(playerId)));
+        return;
+      }
+    }
 
+    ImmutableList<Match> matchCandidates = playerMatchmakingSystem.findMatchCandidates(playerIds);
+
+    // TODO: Print match candidates
   }
 
   private void registerPlayerCommand(List<String> arguments, Message message) {
@@ -123,7 +193,7 @@ public class LeagueOfLegendsBotClient extends ChannelSpecificBotClient {
       playerMatchmakingSystem.updatePlayerData(playerId, laneRatings);
       DiscordHelper.respond(message, String.format("Registered user %s with lane scores: "
               + "%s, %s, %s, %s, %s",
-          DiscordHelper.mentionPlayer(botSystem, playerId),
+          DiscordHelper.mentionPlayer(playerId),
           formatRating(laneRatings[0]),
           formatRating(laneRatings[1]),
           formatRating(laneRatings[2]),

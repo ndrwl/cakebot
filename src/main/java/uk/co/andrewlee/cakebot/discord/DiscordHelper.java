@@ -1,6 +1,7 @@
 package uk.co.andrewlee.cakebot.discord;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
@@ -28,7 +29,7 @@ public class DiscordHelper {
         .of(Long.parseLong(Optional.ofNullable(matcher.group(1)).orElse(matcher.group(0))));
   }
 
-  public static ImmutableList<Long> parseUserList(List<String> listOfUserMentions)
+  public static ImmutableList<Long> parseUserList(Iterable<String> listOfUserMentions)
       throws IllegalArgumentException {
     ImmutableList.Builder<Long> users = ImmutableList.builder();
     for (String userMention : listOfUserMentions) {
@@ -54,14 +55,12 @@ public class DiscordHelper {
   }
 
   public static String mentionListOfPLayers(BotSystem botSystem, Collection<Long> playerIds) {
-    return playerIds.stream().map(playerId -> mentionPlayer(botSystem, playerId))
+    return playerIds.stream().map(playerId -> mentionPlayer(playerId))
         .collect(Collectors.joining(", "));
   }
 
-  public static String mentionPlayer(BotSystem botSystem, long playerId) {
-    return botSystem.getDiscordClient().getUserById(Snowflake.of(playerId))
-        .map(User::getMention)
-        .block();
+  public static String mentionPlayer(long playerId) {
+    return String.format("<@!%d>", playerId);
   }
 
   public static String playerName(BotSystem botSystem, long playerId, Message message) {

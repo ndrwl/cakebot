@@ -2,6 +2,7 @@ package uk.co.andrewlee.cakebot.clients.aoe;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.iwebpp.crypto.TweetNaclFast.Hash;
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.SkillCalculator;
 import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
@@ -13,12 +14,14 @@ import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -111,13 +114,19 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
   }
 
   private void gameCommand(List<String> arguments, Message message) {
-    List<String> players = arguments.subList(1, arguments.size());
-    try {
-      ImmutableList<Long> playerIds = DiscordHelper.parseUserList(players);
-      findBalancedGame(playerIds, message);
-    } catch (IllegalArgumentException e) {
-      DiscordHelper.respond(message, e.getMessage());
+    HashSet<Long> players = new HashSet<>();
+    for (String argument : arguments.subList(1, arguments.size())) {
+      Optional<Long> playerIdOpt = DiscordHelper.extractUserId(argument);
+
+      if (!playerIdOpt.isPresent()) {
+        DiscordHelper.respond(message, String.format("Unknown player %s.", argument));
+        return;
+      }
+
+      players.add(playerIdOpt.get());
     }
+
+    findBalancedGame(ImmutableSet.copyOf(players), message);
   }
 
   private void channelGameCommand(List<String> arguments, Message message) {
@@ -135,19 +144,37 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .collect(ImmutableList.toImmutableList())
         .block();
 
-    List<String> extraPlayers = arguments.subList(1, arguments.size());
-    try {
-      ImmutableList<Long> otherPlayerIds = DiscordHelper.parseUserList(extraPlayers);
-      findBalancedGame(ImmutableList.<Long>builder()
-          .addAll(channelUsers)
-          .addAll(otherPlayerIds)
-          .build(), message);
-    } catch (IllegalArgumentException e) {
-      DiscordHelper.respond(message, e.getMessage());
+    HashSet<Long> players = new HashSet<>();
+    players.addAll(channelUsers);
+
+    for (String argument : arguments.subList(1, arguments.size())) {
+      boolean addPlayer = true;
+      String playerString = argument;
+
+      if (argument.startsWith("+")) {
+        playerString = argument.substring(1);
+      } else if (argument.startsWith("-")) {
+        addPlayer = false;
+        playerString = argument.substring(1);
+      }
+      Optional<Long> playerIdOpt = DiscordHelper.extractUserId(playerString);
+
+      if (!playerIdOpt.isPresent()) {
+        DiscordHelper.respond(message, String.format("Unknown player %s.", playerString));
+        return;
+      }
+
+      if (addPlayer) {
+        players.add(playerIdOpt.get());
+      } else if (argument.startsWith("-")) {
+        players.remove(playerIdOpt.get());
+      }
     }
+
+    findBalancedGame(ImmutableSet.copyOf(players), message);
   }
 
-  private void findBalancedGame(ImmutableList<Long> playerIds, Message message) {
+  private void findBalancedGame(ImmutableSet<Long> playerIds, Message message) {
     Match match = playerRankingSystem.findBalancedMatch(ImmutableSet.copyOf(playerIds));
 
     StringBuilder outputBuilder = new StringBuilder();
@@ -173,8 +200,31 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       return;
     }
 
-    int split = arguments.indexOf("beat");
-    if (split == -1) {
+    HashSet<Long> winners = new HashSet<>();
+    HashSet<Long> losers = new HashSet<>();
+    boolean winningTeam = true;
+
+    for (String argument : arguments.subList(1, arguments.size())) {
+      if (argument.equals("beat")) {
+        winningTeam = false;
+        continue;
+      }
+
+      Optional<Long> playerIdOpt = DiscordHelper.extractUserId(argument);
+
+      if (!playerIdOpt.isPresent()) {
+        DiscordHelper.respond(message, String.format("Unknown player %s.", argument));
+        return;
+      }
+
+      if (winningTeam) {
+        winners.add(playerIdOpt.get());
+      } else {
+        losers.add(playerIdOpt.get());
+      }
+    }
+
+    if (winningTeam) {
       DiscordHelper.respond(message,
           String.format("Provide two teams. Usage: %s outcome [player1] [player2] beat [player3] " +
                   "[player4]   or   %s outcome team1 won",
@@ -182,25 +232,8 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
       return;
     }
 
-    try {
-      ImmutableList<Long> winingUserIds = DiscordHelper.parseUserList(arguments.subList(1, split));
-      ImmutableList<Long> losingUserIds = DiscordHelper.parseUserList(arguments.subList(split + 1,
-          arguments.size()));
-
-      if (winingUserIds.isEmpty()) {
-        DiscordHelper.respond(message, "Must be at least 1 winner.");
-        return;
-      }
-      if (losingUserIds.isEmpty()) {
-        DiscordHelper.respond(message, "Must be at least 1 loser.");
-        return;
-      }
-
-      recordMatchOutcome(MatchOutcome.createTeam1Won(new Match(winingUserIds, losingUserIds,
-          Optional.empty())), message);
-    } catch (IllegalArgumentException e) {
-      DiscordHelper.respond(message, e.getMessage());
-    }
+    recordMatchOutcome(MatchOutcome.createTeam1Won(new Match(ImmutableList.copyOf(winners),
+        ImmutableList.copyOf(losers), Optional.empty())), message);
   }
 
   private void teamOutcomeCommand(List<String> arguments, Message message) {
@@ -318,7 +351,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     long playerId = playerIdOpt.get();
     if (playerRankingSystem.hasPlayer(playerId)) {
       DiscordHelper.respond(message, String.format("User %s is already registered.",
-          DiscordHelper.mentionPlayer(botSystem, playerId)));
+          DiscordHelper.mentionPlayer(playerId)));
       return;
     }
 
@@ -331,10 +364,10 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
 
       if (HIDE_RATING || !initialRating.isPresent()) {
         DiscordHelper.respond(message,
-            String.format("Registered user %s.", DiscordHelper.mentionPlayer(botSystem, playerId)));
+            String.format("Registered user %s.", DiscordHelper.mentionPlayer(playerId)));
       } else {
         DiscordHelper.respond(message, String.format("Registered user %s, with mean rating %s.",
-            DiscordHelper.mentionPlayer(botSystem, playerId), initialRating.get()));
+            DiscordHelper.mentionPlayer(playerId), initialRating.get()));
       }
     } catch (Exception e) {
       logger.error("Error registering user.", e);
@@ -455,11 +488,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     }
 
     if (arguments.size() == 1) {
-      if (message.getAuthor().isPresent()) {
-        DiscordHelper.respond(message, "Could not get message author.");
-        return;
-      }
-      postStats(message.getAuthor().get().getId().asLong(), message);
+      postStats(Long.parseLong(message.getUserData().id()), message);
       return;
     }
 
@@ -477,7 +506,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     Optional<PlayerStats> playerStatsOpt = playerRankingSystem.getPlayerStats(userId);
     if (!playerStatsOpt.isPresent()) {
       DiscordHelper.respond(message,
-          String.format("No stats for user %s.", DiscordHelper.mentionPlayer(botSystem, userId)));
+          String.format("No stats for user %s.", DiscordHelper.mentionPlayer(userId)));
       return;
     }
 
@@ -485,7 +514,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
 
     StringBuilder outputBuilder = new StringBuilder();
     outputBuilder
-        .append(String.format("**Stats for %s**", DiscordHelper.mentionPlayer(botSystem, userId)));
+        .append(String.format("**Stats for %s**", DiscordHelper.mentionPlayer(userId)));
     outputBuilder.append("\n");
     outputBuilder.append("\n");
 
@@ -503,7 +532,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games won with: ");
           outputBuilder.append(String.format("%s (%d)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesWon()));
           outputBuilder.append("\n");
         });
@@ -513,7 +542,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games lost with: ");
           outputBuilder.append(String.format("%s (%d)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesLost()));
           outputBuilder.append("\n");
         });
@@ -525,7 +554,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games won against: ");
           outputBuilder.append(String.format("%s (%d)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesWonAgainst()));
           outputBuilder.append("\n");
         });
@@ -535,7 +564,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Most games lost against: ");
           outputBuilder.append(String.format("%s (%d)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.getGamesLostAgainst()));
           outputBuilder.append("\n");
         });
@@ -548,7 +577,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Highest win rate with: ");
           outputBuilder.append(String.format("%s (%,.1f%%)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.winRate() * 100));
           outputBuilder.append("\n");
         });
@@ -559,7 +588,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
         .ifPresent(playedWithStats -> {
           outputBuilder.append("Lowest win rate with: ");
           outputBuilder.append(String.format("%s (%,.1f%%)",
-              DiscordHelper.mentionPlayer(botSystem, playedWithStats.getOtherPlayerId()),
+              DiscordHelper.mentionPlayer(playedWithStats.getOtherPlayerId()),
               playedWithStats.winRate() * 100));
           outputBuilder.append("\n");
         });
