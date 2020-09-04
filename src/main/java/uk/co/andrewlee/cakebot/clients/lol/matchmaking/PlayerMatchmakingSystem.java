@@ -38,7 +38,7 @@ public class PlayerMatchmakingSystem {
   private static final int TEAM_PERMUTATIONS_TO_CONSIDER = 8;
 
   // TODO: Think of a nicer way of doing this
-  private static final int[] LANE_WEIGHTS = {7, 10, 10, 6, 8};
+  private static final int[] LANE_WEIGHTS = {7, 10, 10, 3, 4, 3, 3};
   private static final int LANE_WEIGHT_SUM = Arrays.stream(LANE_WEIGHTS).sum();
 
   private final PlayerMatchmakingData playerMatchmakingData;
@@ -157,7 +157,7 @@ public class PlayerMatchmakingSystem {
         TEAM_PERMUTATIONS_TO_CONSIDER);
 
     // 2. Calculate the lane variance for all permutations of team 1 vs all permutations of team 2.
-    //    Also calculate the total variance for each team.
+    //    Also calculate the total variance for each team configuration - this is used in step 3.
     double[][] laneVariances = new double[TEAM_PERMUTATIONS_TO_CONSIDER]
         [TEAM_PERMUTATIONS_TO_CONSIDER];
     double[] totalVariancesForTeam1 = new double[TEAM_PERMUTATIONS_TO_CONSIDER];
@@ -174,20 +174,32 @@ public class PlayerMatchmakingSystem {
       }
     }
 
-    // 3. For each team, choose the permutation which has the most favourable overall lane variance.
-    //    (largest for team 1, least for team 2)
-    int bestPermutationForTeam1 = IntStream.range(0, TEAM_PERMUTATIONS_TO_CONSIDER)
-        .boxed()
-        .max(Comparator.comparingDouble(index -> totalVariancesForTeam1[index]))
-        .get();
-    int bestPermutationForTeam2 = IntStream.range(0, TEAM_PERMUTATIONS_TO_CONSIDER)
-        .boxed()
-        .min(Comparator.comparingDouble(index -> totalVariancesForTeam2[index]))
-        .get();
+    // 3. For each permutation, use the totalVariance to determine a probability function that
+    //    represents the probability that the team will pick that permutation.
+    //    To calculate the probability function, normalize the totalVariances.
 
-    // 4. For the best permutations, return use the variance between those permutations
-    //    as the expected lane variance.
-    double expectedVariance = laneVariances[bestPermutationForTeam1][bestPermutationForTeam2];
+    double totalVarianceSumTeam1 = Arrays.stream(totalVariancesForTeam1).sum();
+    double totalVarianceSumTeam2 = Arrays.stream(totalVariancesForTeam2).sum();
+
+    for (int i = 0; i < TEAM_PERMUTATIONS_TO_CONSIDER; i++) {
+      totalVariancesForTeam1[i] /= totalVarianceSumTeam1;
+      totalVariancesForTeam2[i] /= totalVarianceSumTeam2;
+    }
+
+    // 4. Using the probability functions, calculate the expected variance by assuming that the
+    //    probability that each team picks their respective permutation is independent.
+    //    (ie. we can multiply the probabilities to determine the probability of the two
+    //         teams facing with those particular permutations).
+    double expectedVariance = 0.0;
+    for (int team1Index = 0; team1Index < TEAM_PERMUTATIONS_TO_CONSIDER; team1Index++) {
+      for (int team2Index = 0; team2Index < TEAM_PERMUTATIONS_TO_CONSIDER; team2Index++) {
+        double probabilityOfOccurring = totalVariancesForTeam1[team1Index]
+            * totalVariancesForTeam2[team2Index];
+        expectedVariance += probabilityOfOccurring * laneVariances[team1Index][team2Index];
+      }
+    }
+
+    // 5. Calculate the other stats.
     int maxTeamStrengthDiff = topPermutationsForTeam1.get(TEAM_PERMUTATIONS_TO_CONSIDER - 1)
         .getTeamStrength() -  topPermutationsForTeam2.get(TEAM_PERMUTATIONS_TO_CONSIDER - 1)
         .getTeamStrength();
@@ -211,6 +223,28 @@ public class PlayerMatchmakingSystem {
         squareVariance -= squareDiff;
       }
     }
+    // Special cross-lane variance for Support <-> Bot
+    {
+      int strengthDiff = team1.players.get(3).getLaneStrength(3)
+          - team2.players.get(4).getLaneStrength(4);
+      int squareDiff = strengthDiff * strengthDiff * LANE_WEIGHTS[5];
+      if (strengthDiff > 0) {
+        squareVariance += squareDiff;
+      } else {
+        squareVariance -= squareDiff;
+      }
+    }
+    {
+      int strengthDiff = team1.players.get(4).getLaneStrength(4)
+          - team2.players.get(3).getLaneStrength(3);
+      int squareDiff = strengthDiff * strengthDiff * LANE_WEIGHTS[6];
+      if (strengthDiff > 0) {
+        squareVariance += squareDiff;
+      } else {
+        squareVariance -= squareDiff;
+      }
+    }
+
     double absVariance = Math.sqrt((double) Math.abs(squareVariance) / LANE_WEIGHT_SUM);
     if (squareVariance > 0) {
       return absVariance;
