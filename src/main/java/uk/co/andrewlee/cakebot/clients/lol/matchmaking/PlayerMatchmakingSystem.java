@@ -145,7 +145,7 @@ public class PlayerMatchmakingSystem {
    */
   private double matchStrength(Match match) {
     return Math.abs(match.getExpectedLaneVariance())
-        + Math.abs(match.getMaxStrengthDiff() / 20.0);
+        + Math.abs(match.getMaxStrengthDiff() / 30.0);
   }
 
   private Match evaluateMatch(Set<PlayerData> playersOnTeam1,
@@ -176,14 +176,37 @@ public class PlayerMatchmakingSystem {
 
     // 3. For each permutation, use the totalVariance to determine a probability function that
     //    represents the probability that the team will pick that permutation.
-    //    To calculate the probability function, normalize the totalVariances.
+    //    To calculate the probability function, first we normalize the totalVariances.
 
-    double totalVarianceSumTeam1 = Arrays.stream(totalVariancesForTeam1).sum();
-    double totalVarianceSumTeam2 = Arrays.stream(totalVariancesForTeam2).sum();
+    double minTotalVarianceTeam1 = Arrays.stream(totalVariancesForTeam1).min().getAsDouble();
+    double maxTotalVarianceTeam2 = Arrays.stream(totalVariancesForTeam2).max().getAsDouble();
+
+    double[] probabilityDistributionTeam1 = new double[TEAM_PERMUTATIONS_TO_CONSIDER];
+    double[] probabilityDistributionTeam2 = new double[TEAM_PERMUTATIONS_TO_CONSIDER];
 
     for (int i = 0; i < TEAM_PERMUTATIONS_TO_CONSIDER; i++) {
-      totalVariancesForTeam1[i] /= totalVarianceSumTeam1;
-      totalVariancesForTeam2[i] /= totalVarianceSumTeam2;
+      probabilityDistributionTeam1[i] = totalVariancesForTeam1[i] - minTotalVarianceTeam1;
+      probabilityDistributionTeam2[i] = maxTotalVarianceTeam2 - totalVariancesForTeam2[i];
+    }
+
+    double probabilitySumTeam1 = Arrays.stream(probabilityDistributionTeam1).sum();
+    double probabilitySumTeam2 = Arrays.stream(probabilityDistributionTeam2).sum();
+
+    for (int i = 0; i < TEAM_PERMUTATIONS_TO_CONSIDER; i++) {
+      probabilityDistributionTeam1[i] /= probabilitySumTeam1;
+      probabilityDistributionTeam2[i] /= probabilitySumTeam2;
+    }
+
+    // If for some reason the probability sum is 0, then all are equally likely.
+    if (probabilitySumTeam1 < Double.MIN_VALUE) {
+      for (int i = 0; i < TEAM_PERMUTATIONS_TO_CONSIDER; i++) {
+        probabilityDistributionTeam1[i] = 1.0 / TEAM_PERMUTATIONS_TO_CONSIDER;
+      }
+    }
+    if (probabilitySumTeam2 < Double.MIN_VALUE) {
+      for (int i = 0; i < TEAM_PERMUTATIONS_TO_CONSIDER; i++) {
+        probabilityDistributionTeam2[i] = 1.0 / TEAM_PERMUTATIONS_TO_CONSIDER;
+      }
     }
 
     // 4. Using the probability functions, calculate the expected variance by assuming that the
@@ -193,8 +216,8 @@ public class PlayerMatchmakingSystem {
     double expectedVariance = 0.0;
     for (int team1Index = 0; team1Index < TEAM_PERMUTATIONS_TO_CONSIDER; team1Index++) {
       for (int team2Index = 0; team2Index < TEAM_PERMUTATIONS_TO_CONSIDER; team2Index++) {
-        double probabilityOfOccurring = totalVariancesForTeam1[team1Index]
-            * totalVariancesForTeam2[team2Index];
+        double probabilityOfOccurring = probabilityDistributionTeam1[team1Index]
+            * probabilityDistributionTeam2[team2Index];
         expectedVariance += probabilityOfOccurring * laneVariances[team1Index][team2Index];
       }
     }
