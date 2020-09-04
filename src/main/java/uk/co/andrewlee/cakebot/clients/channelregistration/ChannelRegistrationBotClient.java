@@ -47,6 +47,10 @@ public class ChannelRegistrationBotClient implements BotClient {
 
   @Override
   public void handle(List<String> arguments, Message message) {
+    if (!DiscordHelper.messageIsFromAdmin(message)) {
+      return;
+    }
+
     if (arguments.size() != 2) {
       return;
     }

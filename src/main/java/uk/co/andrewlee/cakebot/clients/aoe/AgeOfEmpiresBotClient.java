@@ -2,7 +2,6 @@ package uk.co.andrewlee.cakebot.clients.aoe;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.iwebpp.crypto.TweetNaclFast.Hash;
 import de.gesundkrank.jskills.GameInfo;
 import de.gesundkrank.jskills.SkillCalculator;
 import de.gesundkrank.jskills.trueskill.FactorGraphTrueSkillCalculator;
@@ -21,7 +20,6 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
