@@ -31,8 +31,8 @@ public class PlayerMatchmakingData {
 
     SerializedData loadedData = GSON.fromJson(reader, SerializedData.class);
 
-    loadedData.players.stream().filter(playerData -> playerData.laneStrength.length == 5)
-        .forEach(playerData -> playerStats.put(playerData.playerId, playerData));
+    loadedData.players.stream().filter(playerData -> playerData.getLaneStrengths().length == 5)
+        .forEach(playerData -> playerStats.put(playerData.getPlayerId(), playerData));
     logger.info("Loaded {} LoL player stats.", loadedData.players.size());
   }
 
@@ -58,17 +58,6 @@ public class PlayerMatchmakingData {
 
   public HashMap<Long, PlayerData> getAllPlayerStats() {
     return playerStats;
-  }
-
-  public static class PlayerData {
-
-    public final long playerId;
-    public final int[] laneStrength;
-
-    public PlayerData(long playerId, int[] laneStrength) {
-      this.playerId = playerId;
-      this.laneStrength = laneStrength;
-    }
   }
 
   public static class SerializedData {

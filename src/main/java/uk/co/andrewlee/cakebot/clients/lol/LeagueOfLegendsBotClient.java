@@ -20,13 +20,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import javax.annotation.concurrent.GuardedBy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrar;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelSpecificBotClient;
 import uk.co.andrewlee.cakebot.clients.lol.matchmaking.Match;
-import uk.co.andrewlee.cakebot.clients.lol.matchmaking.PlayerMatchmakingData.PlayerData;
+import uk.co.andrewlee.cakebot.clients.lol.matchmaking.PlayerData;
 import uk.co.andrewlee.cakebot.clients.lol.matchmaking.PlayerMatchmakingSystem;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 import uk.co.andrewlee.cakebot.discord.DiscordHelper;
@@ -145,9 +146,63 @@ public class LeagueOfLegendsBotClient extends ChannelSpecificBotClient {
       }
     }
 
-    ImmutableList<Match> matchCandidates = playerMatchmakingSystem.findMatchCandidates(playerIds);
+    if (playerIds.size() != 10) {
+      DiscordHelper.respond(message, String.format("League of Legends requires 10 people. "
+          + "There are currently %d.", playerIds.size()));
+      return;
+    }
 
-    // TODO: Print match candidates
+    Message response = DiscordHelper.respond(message, "Calculating...");
+
+    ImmutableList<Match> matchCandidates = playerMatchmakingSystem.findMatchCandidates(playerIds);
+    StringBuilder outputBuilder = new StringBuilder();
+    for (int i = 0; i < matchCandidates.size(); i++) {
+      Match match = matchCandidates.get(i);
+
+      outputBuilder.append("**Option ");
+      outputBuilder.append(i + 1);
+      outputBuilder.append("**\n");
+      outputBuilder.append("```\n");
+
+      outputBuilder.append("Team 1: ");
+      outputBuilder.append(match.getTeam1().stream()
+          .map(PlayerData::getPlayerId)
+          .map(playerId -> DiscordHelper.playerName(botSystem, playerId, message))
+          .sorted()
+          .collect(Collectors.joining(", ")));
+
+      outputBuilder.append("\n");
+      outputBuilder.append("\n");
+
+      outputBuilder.append("Team 2: ");
+      outputBuilder.append(match.getTeam2().stream()
+          .map(PlayerData::getPlayerId)
+          .map(playerId -> DiscordHelper.playerName(botSystem, playerId, message))
+          .sorted()
+          .collect(Collectors.joining(", ")));
+
+      outputBuilder.append("\n");
+      outputBuilder.append("\n");
+      outputBuilder.append("Expected Lane Variance: ");
+      outputBuilder.append(String.format("%,.1f", -match.getExpectedLaneVariance() / 10.0));
+      outputBuilder.append("   ");
+      outputBuilder.append("Max. Str. Diff: ");
+      outputBuilder.append(formatRating(-match.getMaxStrengthDiff()));
+      outputBuilder.append("   ");
+      outputBuilder.append("Avg. Str. Diff: ");
+      outputBuilder.append(formatRating(-match.getAverageStrengthDiff()));
+      outputBuilder.append("```\n");
+    }
+
+    String output = outputBuilder.toString();
+    try {
+      response.edit(messageEditSpec -> messageEditSpec.setContent(output))
+          .onErrorStop()
+          .block();
+    } catch (Exception e) {
+      // Probably permissions...
+      DiscordHelper.respond(message, output);
+    }
   }
 
   private void registerPlayerCommand(List<String> arguments, Message message) {
@@ -227,11 +282,11 @@ public class LeagueOfLegendsBotClient extends ChannelSpecificBotClient {
         .forEach(entry -> {
           PlayerData playerData = allPlayerStats.get(entry.getKey());
           asciiTable.addRow(entry.getValue(),
-              formatRating(playerData.laneStrength[0]),
-              formatRating(playerData.laneStrength[1]),
-              formatRating(playerData.laneStrength[2]),
-              formatRating(playerData.laneStrength[3]),
-              formatRating(playerData.laneStrength[4]));
+              formatRating(playerData.getLaneStrength(0)),
+              formatRating(playerData.getLaneStrength(1)),
+              formatRating(playerData.getLaneStrength(2)),
+              formatRating(playerData.getLaneStrength(3)),
+              formatRating(playerData.getLaneStrength(4)));
         });
 
     asciiTable.addRule();

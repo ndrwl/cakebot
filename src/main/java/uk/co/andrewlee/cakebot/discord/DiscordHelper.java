@@ -1,7 +1,6 @@
 package uk.co.andrewlee.cakebot.discord;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import discord4j.common.util.Snowflake;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
@@ -10,7 +9,6 @@ import discord4j.rest.util.Permission;
 import java.util.Collection;
 import java.util.stream.Collectors;
 
-import java.util.List;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,8 +41,8 @@ public class DiscordHelper {
     return users.build();
   }
 
-  public static void respond(Message originalMessage, String reply) {
-    originalMessage.getChannel().flatMap(channel -> channel.createMessage(reply)).block();
+  public static Message respond(Message originalMessage, String reply) {
+    return originalMessage.getChannel().flatMap(channel -> channel.createMessage(reply)).block();
   }
 
   public static boolean messageIsFromAdmin(Message message) {
