@@ -92,6 +92,7 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     this.lastMatch = Optional.empty();
   }
 
+  @Override
   public void init() {
     registerMessageHandler("game", this::gameCommand);
     registerMessageHandler("channelgame", this::channelGameCommand);
@@ -106,7 +107,6 @@ public class AgeOfEmpiresBotClient extends ChannelSpecificBotClient {
     registerMessageHandler("stats", this::statCommand);
     registerMessageHandler("draft", this::randomDraft);
     registerMessageHandler("maps", this::listMaps);
-    // TODO: Register Channels
     super.init();
   }
 

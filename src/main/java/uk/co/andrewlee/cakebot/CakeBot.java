@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrar;
 import uk.co.andrewlee.cakebot.clients.channelregistration.ChannelRegistrationBotClient;
+import uk.co.andrewlee.cakebot.clients.lol.LeagueOfLegendsBotClient;
 import uk.co.andrewlee.cakebot.discord.BotSystem;
 
 import java.nio.file.Path;
@@ -28,9 +29,12 @@ public class CakeBot {
     ChannelRegistrar channelRegistrar = channelRegistrationBotClient.getChannelRegistrar();
     AgeOfEmpiresBotClient ageOfEmpiresBotClient = AgeOfEmpiresBotClient
         .create(botSystem, 10, saveDirectory, channelRegistrar);
+    LeagueOfLegendsBotClient leagueOfLegendsBotClient = LeagueOfLegendsBotClient
+        .create(botSystem, channelRegistrar, saveDirectory);
 
     botSystem.registerBotClient(channelRegistrationBotClient);
     botSystem.registerBotClient(ageOfEmpiresBotClient);
+    botSystem.registerBotClient(leagueOfLegendsBotClient);
 
     botSystem.start();
   }

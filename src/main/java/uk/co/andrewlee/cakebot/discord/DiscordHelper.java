@@ -15,15 +15,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DiscordHelper {
-
-  private static final Pattern MENTION_PATTERN = Pattern.compile("<@[!]?([0-9]*)>");
+  private static final Pattern MENTION_PATTERN = Pattern.compile("(?:<@[!]?([0-9]*)>|([0-9]*))");
 
   public static Optional<Long> extractUserId(String string) {
     Matcher matcher = MENTION_PATTERN.matcher(string);
     if (!matcher.matches()) {
       return Optional.empty();
     }
-    return Optional.of(Long.parseLong(matcher.group(1)));
+
+    // TODO: Something weird is happening with regex here. Not sure what...
+    return Optional
+        .of(Long.parseLong(Optional.ofNullable(matcher.group(1)).orElse(matcher.group(0))));
   }
 
   public static ImmutableList<Long> parseUserList(List<String> listOfUserMentions)
@@ -74,7 +76,7 @@ public class DiscordHelper {
             .map(User::getUsername)
             .block();
       } catch (Exception e2) {
-          return String.format("Unknown-%s", playerId);
+        return String.format("Unknown-%s", playerId);
       }
     }
   }
